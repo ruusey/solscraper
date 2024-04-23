@@ -1,6 +1,6 @@
 ## solscraper
 
-# Java application that listened to Raydiums token creation pool for newly minted tokens
+# Java application that listens to Raydiums token creation pool for newly minted tokens
 
 1) Install **maven** and **Java 11** JDK
 2) Clone this repo
