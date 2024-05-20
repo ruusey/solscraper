@@ -7,7 +7,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class SolscraperApplication {
 
 	public static void main(String[] args) {
-		System.setProperty("webdriver.chrome.driver", "/usr/bin/chromedriver");
 		SpringApplication.run(SolscraperApplication.class, args);
 	}
 

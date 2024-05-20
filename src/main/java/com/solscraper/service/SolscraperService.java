@@ -5,9 +5,10 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
+import java.util.Date;
 import javax.annotation.PostConstruct;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -34,9 +35,10 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
+@SuppressWarnings("unused")
 public class SolscraperService {
-	private static final transient String TOKEN_BUY_MSG = "** BUY THIS SHIII ** Token pair base information located: \n**{0}**\n{1}\n{2}\n{3}\n{4}";
-	private static final transient String TOKEN_MSG = "New token mint found but did not meet purchase criteria: \n**{0}**\n{1}\n{2}\n{3}\n{4}";
+	private static final transient String TOKEN_BUY_MSG = "** BUY THIS SHIII ** Token pair base information located: \n<b>{0}\n{1}\n{2}\nMCAP:{3}\n{4}\n{5}</b>";
+	private static final transient String TOKEN_MSG = "New token mint found but did not meet purchase criteria: \n{0}*\n{1}\n{2}\n{3}\n{4}";
 	
 	private transient ApiSessionOkHttp solExplorerApi;
 	private transient ApiSessionOkHttp dexScreenerApi;
@@ -46,7 +48,8 @@ public class SolscraperService {
 	private transient ApiSessionOkHttp heliusApi2;
 	private transient ApiSessionOkHttp genericApi;
 	
-	private final transient boolean shutdown;
+	private final transient TelegramBotService telegramService;
+	private transient boolean shutdown;
 	private final transient List<String> seenTransactions;
 	private transient boolean firstFetch = true;
 	
@@ -59,7 +62,8 @@ public class SolscraperService {
 	@Value("${service.helius1}")
 	private String helius1Url;
 	
-	public SolscraperService() {
+	public SolscraperService(@Autowired final TelegramBotService telegramService) {
+		this.telegramService = telegramService;
 		this.shutdown = false;
 		this.seenTransactions = new ArrayList<>();
 	}
@@ -72,6 +76,7 @@ public class SolscraperService {
 		this.heliusApi = new ApiSessionOkHttp(this.helius0Url);
 		this.heliusApi2 = new ApiSessionOkHttp(this.helius1Url);
 		this.genericApi = new ApiSessionOkHttp("");
+		Runtime.getRuntime().addShutdownHook(this.getShutdownManager());
 	}
 
 	@EventListener(ApplicationReadyEvent.class)
@@ -122,8 +127,12 @@ public class SolscraperService {
 							}
 						}
 					}
+					if(mintAccount.equalsIgnoreCase("So11111111111111111111111111111111111111112")) {
+						continue;
+					}
 					// If we found newly minted token information
 					final String mintAccountFinal = mintAccount;
+					final long blockTimeFinal = transactionParsed.getResult().getBlockTime()*1000l;
 					if (mintAccount != null) {
 						final Runnable quickTokenData = () ->{
 							try {
@@ -140,13 +149,16 @@ public class SolscraperService {
 								log.info(this.heliusApi.getMapper().writeValueAsString(metadata[0]));
 								log.info(this.heliusApi.getMapper().writeValueAsString(extMeta));
 								StringBuilder builder = new StringBuilder();
-								builder.append("**" + meta.data.name + " (" + meta.data.symbol + ")**\n");
-								builder.append(extMeta.image);
-								builder.append("\n"+metadata[0].account + "\nUpdate Authority: "+ meta.updateAuthority + "\nFreeze Authority: "+mintInfo.freezeAuthority+"\nMint Authority: "+mintInfo.mintAuthority);
+								builder.append("<u>LATEST MINT @"+new Date(blockTimeFinal)+"</u>\n");
+								builder.append("<b>" + meta.data.name + " (" + meta.data.symbol + ")</b>\n");
+								builder.append("<b>CA: </b>"+metadata[0].account + "\n");
+								builder.append("<b>Update Authority: </b> "+ meta.updateAuthority + "\n");
+								builder.append("<b>Freeze Authority: </b> "+(mintInfo.freezeAuthority == null || mintInfo.freezeAuthority.isEmpty() ? "<tg-emoji emoji-id=\"5368324170671202286\">✅</tg-emoji>": "<tg-emoji emoji-id=\"5368324170671202286\">🚨</tg-emoji>")+"\n");
+								builder.append("<b>Mint Authority: </b> "+ (mintInfo.mintAuthority == null || mintInfo.mintAuthority.isEmpty() ? "<tg-emoji emoji-id=\"5368324170671202286\">✅</tg-emoji>" : "<tg-emoji emoji-id=\"5368324170671202286\">🚨</tg-emoji>")+"\n");
 								if(extMeta!=null && extMeta.extensions!=null) {
 									builder.append("\nTelegram: "+extMeta.extensions.telegram+"\nTwitter: "+extMeta.extensions.twitter+"\nWebsite:"+ extMeta.extensions.website);
 								}
-								this.postToDiscordWebhookRaw(builder.toString());
+								this.telegramService.sendGroupMessage(builder.toString(), extMeta.image);
 							}catch(Exception e) {
 								log.error("Failed to get quick data from Solana Explorer for quick token data, {}",e);
 							}
@@ -156,22 +168,25 @@ public class SolscraperService {
 
 						final Runnable getDexScreenerData = () ->{
 							try {
-								Thread.sleep(25000);
+								Thread.sleep(100000);
 								final DexScreenerResponse dexScreenerResponse = this.searchTokenPoolInformation(mintAccountFinal);
 								if (dexScreenerResponse != null && dexScreenerResponse.pairs != null
 										&& dexScreenerResponse.pairs.size() > 0) {
 									final Pair pair = dexScreenerResponse.pairs.get(0);
-
 									final BaseToken token = pair.getBaseToken();
-									if(pair.getVolume().h24.compareTo(new BigDecimal(30000))==1) {
-										final String msg = MessageFormat.format(TOKEN_BUY_MSG, token.getName()+" ("+token.getSymbol()+") "+token.getAddress(), pair.getVolume(), pair.getLiquidity(), pair.getPriceChange(), pair.getUrl());
+						
+									if(new BigDecimal(pair.getFdv()).compareTo(new BigDecimal(80000))==1) {
+										final String msg = MessageFormat.format(TOKEN_BUY_MSG, token.getName()+" ("+token.getSymbol()+") "+token.getAddress(), pair.getVolume(), pair.getLiquidity(), pair.getFdv(), pair.getUrl(), "Mint Datetime: "+new Date(blockTimeFinal));
 										log.info(msg);
-										this.postToDiscordWebhook(msg);	
+										//this.postToDiscordWebhook(msg);
+										this.telegramService.sendSimpleMessage(msg);
+
 										
 									}else {
-										final String msg = MessageFormat.format(TOKEN_MSG, token.getName()+" ("+token.getSymbol()+") "+token.getAddress(), pair.getVolume(), pair.getLiquidity(), pair.getPriceChange(), pair.getUrl());
+										final String msg = MessageFormat.format(TOKEN_MSG, token.getName()+" ("+token.getSymbol()+") "+token.getAddress(), pair.getVolume(), pair.getLiquidity(), pair.getFdv(), pair.getUrl());
 										log.info(msg);
-										this.postToDiscordWebhook(msg);
+										//this.telegramService.sendGroupMessage(msg);
+										//this.postToDiscordWebhook(msg);
 									}
 								}else {
 									log.error("No pair information found for Address {}", mintAccountFinal);
@@ -182,12 +197,12 @@ public class SolscraperService {
 						};
 						WorkerThread.submitAndForkRun(getDexScreenerData);
 					}
-					Thread.sleep(1000);
+					Thread.sleep(250);
 				}
 			}catch(Exception e) {
 				log.error("Solscraper failed. Error: {}", e);
 			}
-			Thread.sleep(3000);
+			Thread.sleep(1000);
 
 		}	
 	}
@@ -198,6 +213,7 @@ public class SolscraperService {
 		//log.info("Discord Webhook Response: {}", response);
 	}
 	
+
 	private void postToDiscordWebhookRaw(final String content) throws Exception {
 		final WebhookPostRequest request = WebhookPostRequest.builder().content(content).build();
 		final String response = this.discordApi.executePost(this.tokenDiscordWebhook, request);
@@ -217,5 +233,12 @@ public class SolscraperService {
 		final String tokenUrl = "/dex/search/?q="+pairAddress;
 		final String response = this.dexScreenerApi.executeGet(tokenUrl);
 		return this.dexScreenerApi.parseResponse(response, DexScreenerResponse.class);
+	}
+	
+	private Thread getShutdownManager() {
+		Runnable shutdownRoutine = () ->{
+			this.shutdown=true;
+		};
+		return new Thread(shutdownRoutine);
 	}
 }

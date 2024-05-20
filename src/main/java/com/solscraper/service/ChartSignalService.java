@@ -2,8 +2,6 @@ package com.solscraper.service;
 
 import java.text.MessageFormat;
 
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import com.solscraper.model.gecko.response.PoolOhlcResponse;
@@ -12,7 +10,7 @@ import com.solscraper.util.ApiSessionOkHttp;
 
 import lombok.extern.slf4j.Slf4j;
 
-@Service
+//@Service
 @Slf4j
 public class ChartSignalService {
 	private final transient ApiSessionOkHttp solExplorerApi;
