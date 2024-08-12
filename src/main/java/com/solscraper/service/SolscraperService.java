@@ -37,7 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @SuppressWarnings("unused")
 public class SolscraperService {
-	private static final transient String TOKEN_BUY_MSG = "** BUY THIS SHIII ** Token pair base information located: \n<b>{0}\n{1}\n{2}\nMCAP:{3}\n{4}\n{5}</b>";
+	private static final transient String TOKEN_BUY_MSG = "** BUY THIS ** Token pair base information located: \n<b>{0}\n{1}\n{2}\nMCAP:{3}\n{4}\n{5}</b>";
 	private static final transient String TOKEN_MSG = "New token mint found but did not meet purchase criteria: \n{0}*\n{1}\n{2}\n{3}\n{4}";
 	
 	private transient ApiSessionOkHttp solExplorerApi;
