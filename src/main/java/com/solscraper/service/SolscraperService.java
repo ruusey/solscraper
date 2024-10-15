@@ -159,6 +159,7 @@ public class SolscraperService {
 
                                 if(assetResult.content.getFiles().get(0)!=null) {
                                     final String imageUrl = assetResult.content.getFiles().get(0).uri;
+                                    log.info("Publishing RAW token update for {}",  assetResult.content.getMetadata());
                                     this.postToDiscordWebhookRaw(builder.toString());
                                     this.telegramService.sendGroupMessage(builder.toString(), imageUrl);
                                 }
@@ -181,15 +182,14 @@ public class SolscraperService {
                                         final String msg = MessageFormat.format(TOKEN_BUY_MSG,
                                                 token.getName() + " (" + token.getSymbol() + ") " + token.getAddress(), pair.getVolume(),
                                                 pair.getLiquidity(), pair.getFdv(), pair.getUrl(), "Mint Datetime: " + new Date(blockTimeFinal));
-                                        log.info(msg);
+                                        log.info("Publishing BUY token message for {}",  msg);
                                         this.postToDiscordWebhook(msg);
                                         this.telegramService.sendSimpleMessage(msg);
-
                                     } else {
                                         final String msg = MessageFormat.format(TOKEN_MSG,
                                                 token.getName() + " (" + token.getSymbol() + ") " + token.getAddress(), pair.getVolume(),
                                                 pair.getLiquidity(), pair.getFdv(), pair.getUrl());
-                                        log.info(msg);
+                                        log.info("Publishing token message for {}",  msg);
                                         // this.telegramService.sendGroupMessage(msg);
                                         this.postToDiscordWebhook(msg);
                                     }
@@ -202,13 +202,12 @@ public class SolscraperService {
                         };
                         WorkerThread.submitAndForkRun(getDexScreenerData);
                     }
-                    Thread.sleep(2000);
+                    Thread.sleep(3000);
                 }
             } catch (Exception e) {
                 log.error("Solscraper failed. Error: {}", e);
             }
-            Thread.sleep(5000);
-
+            Thread.sleep(2000);
         }
     }
 
