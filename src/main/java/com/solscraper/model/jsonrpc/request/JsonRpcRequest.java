@@ -34,7 +34,7 @@ public class JsonRpcRequest {
 		final Map<String, Object> extraParams = new HashMap<String, Object>();
 		extraParams.put("limit", 10);
 
-		return JsonRpcRequest.builder().method("getConfirmedSignaturesForAddress2")
+		return JsonRpcRequest.builder().method("getSignaturesForAddress")
 				.jsonrpc("2.0")
 				.params(Arrays.asList(RAYDIUM_TOKEN_POOL, extraParams))
 				.id(UUID.randomUUID().toString())

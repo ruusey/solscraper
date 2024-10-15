@@ -5,6 +5,7 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.Date;
 import javax.annotation.PostConstruct;
 
@@ -18,10 +19,14 @@ import com.solscraper.model.dexscreener.response.BaseToken;
 import com.solscraper.model.dexscreener.response.DexScreenerResponse;
 import com.solscraper.model.dexscreener.response.Pair;
 import com.solscraper.model.discord.webhook.WebhookPostRequest;
+import com.solscraper.model.helius.meta.response.Authority;
+import com.solscraper.model.helius.meta.response.HeliusMetadataResponse;
+import com.solscraper.model.helius.meta.response.Result;
 import com.solscraper.model.helius.request.TokenMetadataRequest;
 import com.solscraper.model.helius.response.Metadata;
 import com.solscraper.model.helius.response.TokenMetadataResponse;
 import com.solscraper.model.jsonrpc.request.JsonRpcRequest;
+import com.solscraper.model.jsonrpc.request.MapParamJsonRpcRequest;
 import com.solscraper.model.nftstorage.response.TokenMetaData;
 import com.solscraper.model.solexplorer.response.InnerInstruction;
 import com.solscraper.model.solexplorer.response.Instruction;
@@ -138,27 +143,32 @@ public class SolscraperService {
 							try {
 								TokenMetadataRequest metaDataRequest = TokenMetadataRequest.builder().mintAccounts(Arrays.asList(mintAccountFinal)).includeOffChain(false).build();
 //
-//								final MapParamJsonRpcRequest assetRequest = MapParamJsonRpcRequest.getHeliusAssetLookupReqest(mintAccountFinal);
-//								final String assetResponse = this.heliusApi2.executePost("", assetRequest);
-								final String metadataResponse = this.heliusApi.executePost("", metaDataRequest);
-								final TokenMetadataResponse[] metadata = this.heliusApi.parseResponse(metadataResponse, TokenMetadataResponse[].class);
-								com.solscraper.model.helius.response.Info mintInfo = metadata[0].onChainAccountInfo.accountInfo.data.parsed.info;
-								Metadata meta = metadata[0].onChainMetadata.metadata;
-								final String nftStorageResponse = this.genericApi.executeGet(meta.data.uri);
-								final TokenMetaData extMeta = this.genericApi.parseResponse(nftStorageResponse, TokenMetaData.class);
-								log.info(this.heliusApi.getMapper().writeValueAsString(metadata[0]));
-								log.info(this.heliusApi.getMapper().writeValueAsString(extMeta));
+								final MapParamJsonRpcRequest assetRequest = MapParamJsonRpcRequest.getHeliusAssetLookupReqest(mintAccountFinal);
+								final String assetResponse = this.heliusApi2.executePost("", assetRequest);
+								final HeliusMetadataResponse heliusAssetInfo = this.heliusApi2.parseResponse(assetResponse, HeliusMetadataResponse.class);
+								final Result assetResult = heliusAssetInfo.result;
+
+//								final String nftStorageResponse = this.genericApi.executeGet(meta.data.uri);
+//								final TokenMetaData extMeta = this.genericApi.parseResponse(nftStorageResponse, TokenMetaData.class);
+//								log.info(this.heliusApi.getMapper().writeValueAsString(metadata[0]));
+								//log.info(this.heliusApi.getMapper().writeValueAsString(extMeta));
 								StringBuilder builder = new StringBuilder();
 								builder.append("<u>LATEST MINT @"+new Date(blockTimeFinal)+"</u>\n");
-								builder.append("<b>" + meta.data.name + " (" + meta.data.symbol + ")</b>\n");
-								builder.append("<b>CA: </b>"+metadata[0].account + "\n");
-								builder.append("<b>Update Authority: </b> "+ meta.updateAuthority + "\n");
-								builder.append("<b>Freeze Authority: </b> "+(mintInfo.freezeAuthority == null || mintInfo.freezeAuthority.isEmpty() ? "<tg-emoji emoji-id=\"5368324170671202286\">✅</tg-emoji>": "<tg-emoji emoji-id=\"5368324170671202286\">🚨</tg-emoji>")+"\n");
-								builder.append("<b>Mint Authority: </b> "+ (mintInfo.mintAuthority == null || mintInfo.mintAuthority.isEmpty() ? "<tg-emoji emoji-id=\"5368324170671202286\">✅</tg-emoji>" : "<tg-emoji emoji-id=\"5368324170671202286\">🚨</tg-emoji>")+"\n");
-								if(extMeta!=null && extMeta.extensions!=null) {
-									builder.append("\nTelegram: "+extMeta.extensions.telegram+"\nTwitter: "+extMeta.extensions.twitter+"\nWebsite:"+ extMeta.extensions.website);
+								builder.append("<b>" + assetResult.content.getMetadata().name + " (" + assetResult.content.getMetadata().symbol + ")</b>\n");
+								builder.append("<b>CA: </b>"+assetResult.id + "\n");
+								for(Authority o : assetResult.authorities) {
+									builder.append("<b>Authority Addr: </b> "+ o.getAddress() + "\n");
+									builder.append("<b>	Scope: </b> "+ o.getScopes().stream().collect(Collectors.joining(", ")) + "\n");
+
 								}
-								this.telegramService.sendGroupMessage(builder.toString(), extMeta.image);
+//								builder.append("<b>Update Authority: </b> "+ meta.updateAuthority + "\n");
+//								builder.append("<b>Freeze Authority: </b> "+(mintInfo.freezeAuthority == null || mintInfo.freezeAuthority.isEmpty() ? "<tg-emoji emoji-id=\"5368324170671202286\">✅</tg-emoji>": "<tg-emoji emoji-id=\"5368324170671202286\">🚨</tg-emoji>")+"\n");
+//								builder.append("<b>Mint Authority: </b> "+ (mintInfo.mintAuthority == null || mintInfo.mintAuthority.isEmpty() ? "<tg-emoji emoji-id=\"5368324170671202286\">✅</tg-emoji>" : "<tg-emoji emoji-id=\"5368324170671202286\">🚨</tg-emoji>")+"\n");
+//								if(extMeta!=null && extMeta.extensions!=null) {
+//									builder.append("\nTelegram: "+extMeta.extensions.telegram+"\nTwitter: "+extMeta.extensions.twitter+"\nWebsite:"+ extMeta.extensions.website);
+//								}
+								final String imageUrl = assetResult.content.getFiles().get(0).uri;
+								this.telegramService.sendGroupMessage(builder.toString(), imageUrl);
 							}catch(Exception e) {
 								log.error("Failed to get quick data from Solana Explorer for quick token data, {}",e);
 							}
@@ -197,12 +207,12 @@ public class SolscraperService {
 						};
 						WorkerThread.submitAndForkRun(getDexScreenerData);
 					}
-					Thread.sleep(250);
+					Thread.sleep(2000);
 				}
 			}catch(Exception e) {
 				log.error("Solscraper failed. Error: {}", e);
 			}
-			Thread.sleep(1000);
+			Thread.sleep(5000);
 
 		}	
 	}
