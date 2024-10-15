@@ -44,12 +44,13 @@ import lombok.extern.slf4j.Slf4j;
 public class SolscraperService {
     private static final transient String TOKEN_BUY_MSG = "** BUY THIS ** Token pair base information located: \n<b>{0}\n{1}\n{2}\nMCAP:{3}\n{4}\n{5}</b>";
     private static final transient String TOKEN_MSG = "New token mint found but did not meet purchase criteria: \n{0}*\n{1}\n{2}\n{3}\n{4}";
+    
+    private static final transient String TOKEN_BUY_MSG_DISC = "** BUY THIS ** Token pair base information located: \n**{0}\n{1}\n{2}\nMCAP:{3}\n{4}\n{5}**";
+    private static final transient String TOKEN_MSG_DISC = "New token mint found but did not meet purchase criteria: \n{0}*\n{1}\n{2}\n{3}\n{4}";
 
-    private transient ApiSessionOkHttp solExplorerApi;
     private transient ApiSessionOkHttp dexScreenerApi;
     private transient ApiSessionOkHttp discordApi;
     private transient ApiSessionOkHttp heliusApi;
-    @SuppressWarnings("unused")
     private transient ApiSessionOkHttp heliusApi2;
     private transient ApiSessionOkHttp genericApi;
 
@@ -75,7 +76,6 @@ public class SolscraperService {
 
     @PostConstruct
     private void initApis() {
-        this.solExplorerApi = new ApiSessionOkHttp("https://explorer-api.mainnet-beta.solana.com");
         this.dexScreenerApi = new ApiSessionOkHttp("https://api.dexscreener.com/latest");
         this.discordApi = new ApiSessionOkHttp("https://discordapp.com");
         this.heliusApi = new ApiSessionOkHttp(this.helius0Url);
@@ -91,8 +91,8 @@ public class SolscraperService {
             try {
                 // Execute a POST to SolExplorer to get the latest transactions against the
                 // Raydium Token Program Contract
-                final String response = this.solExplorerApi.executePost("", JsonRpcRequest.getSignatureRequest());
-                final SolExplorerResponse solscan = this.solExplorerApi.parseResponse(response, SolExplorerResponse.class);
+                final String response = this.heliusApi2.executePost("", JsonRpcRequest.getSignatureRequest());
+                final SolExplorerResponse solscan = this.heliusApi2.parseResponse(response, SolExplorerResponse.class);
                 // For each row in the transactions table
                 if (this.firstFetch) {
                     this.firstFetch = false;
@@ -107,7 +107,7 @@ public class SolscraperService {
 
                     final String signature = result.getSignature();
                     final JsonRpcRequest tx = JsonRpcRequest.getTransactionRequest(signature);
-                    final String transaction = this.solExplorerApi.executePost("", tx);
+                    final String transaction = this.heliusApi2.executePost("", tx);
 
                     // See if we can find successful mint information in the transaction
                     final int startIdx = transaction.indexOf("\"mint\"");
@@ -116,7 +116,7 @@ public class SolscraperService {
                         continue;
                     }
 
-                    final TransactionLookupResponse transactionParsed = this.solExplorerApi.parseResponse(transaction,
+                    final TransactionLookupResponse transactionParsed = this.heliusApi2.parseResponse(transaction,
                             TransactionLookupResponse.class);
                     String mintAccount = null;
                     // Loop through all the instructions from the transaction to find the
@@ -148,20 +148,29 @@ public class SolscraperService {
                                         HeliusMetadataResponse.class);
                                 final Result assetResult = heliusAssetInfo.result;
                                 final StringBuilder builder = new StringBuilder();
+                                final StringBuilder builderDiscord = new StringBuilder();
                                 builder.append("<u>LATEST MINT @" + new Date(blockTimeFinal) + "</u>\n");
+                                builderDiscord.append("__LATEST MINT @" + new Date(blockTimeFinal) + "__\n");
+
                                 builder.append(
                                         "<b>" + assetResult.content.getMetadata().name + " (" + assetResult.content.getMetadata().symbol + ")</b>\n");
+                                builderDiscord.append(
+                                        "**" + assetResult.content.getMetadata().name + " (" + assetResult.content.getMetadata().symbol + ")**\n");
+
+               
                                 builder.append("<b>CA: </b>" + assetResult.id + "\n");
+                                builderDiscord.append("**CA: </b>" + assetResult.id + "\n");
+
                                 for (Authority o : assetResult.authorities) {
                                     builder.append("<b>Authority Addr: </b> " + o.getAddress() + "\n");
-                                    builder.append("<b>	Scope: </b> " + o.getScopes().stream().collect(Collectors.joining(", ")) + "\n");
+                                    builder.append("**Authority Addr: ** " + o.getAddress() + "\n");
                                 }
 
                                 if(assetResult.content.getFiles().get(0)!=null) {
                                     final String imageUrl = assetResult.content.getFiles().get(0).uri;
-                                    log.info("Publishing RAW token update for {}",  assetResult.content.getMetadata());
+                                    log.info("Publishing RAW token update for {}",  assetResult.content.getMetadata().name+"("+assetResult.content.getMetadata().symbol+")");
                                     this.postToDiscordWebhookRaw(builder.toString());
-                                    this.telegramService.sendGroupMessage(builder.toString(), imageUrl);
+                                    this.telegramService.sendGroupMessage(builderDiscord.toString(), imageUrl);
                                 }
                             } catch (Exception e) {
                                 log.error("Failed to get quick data from Solana Explorer for quick token data, {}", e);
@@ -182,16 +191,22 @@ public class SolscraperService {
                                         final String msg = MessageFormat.format(TOKEN_BUY_MSG,
                                                 token.getName() + " (" + token.getSymbol() + ") " + token.getAddress(), pair.getVolume(),
                                                 pair.getLiquidity(), pair.getFdv(), pair.getUrl(), "Mint Datetime: " + new Date(blockTimeFinal));
+                                        final String msgDisc = MessageFormat.format(TOKEN_BUY_MSG_DISC,
+                                                token.getName() + " (" + token.getSymbol() + ") " + token.getAddress(), pair.getVolume(),
+                                                pair.getLiquidity(), pair.getFdv(), pair.getUrl(), "Mint Datetime: " + new Date(blockTimeFinal));
                                         log.info("Publishing BUY token message for {}",  msg);
-                                        this.postToDiscordWebhook(msg);
+                                        this.postToDiscordWebhook(msgDisc);
                                         this.telegramService.sendSimpleMessage(msg);
                                     } else {
                                         final String msg = MessageFormat.format(TOKEN_MSG,
                                                 token.getName() + " (" + token.getSymbol() + ") " + token.getAddress(), pair.getVolume(),
                                                 pair.getLiquidity(), pair.getFdv(), pair.getUrl());
+                                        final String msgDisc = MessageFormat.format(TOKEN_MSG_DISC,
+                                                token.getName() + " (" + token.getSymbol() + ") " + token.getAddress(), pair.getVolume(),
+                                                pair.getLiquidity(), pair.getFdv(), pair.getUrl());
                                         log.info("Publishing token message for {}",  msg);
                                         // this.telegramService.sendGroupMessage(msg);
-                                        this.postToDiscordWebhook(msg);
+                                        this.postToDiscordWebhook(msgDisc);
                                     }
                                 } else {
                                     log.error("No pair information found for Address {}", mintAccountFinal);
@@ -202,12 +217,12 @@ public class SolscraperService {
                         };
                         WorkerThread.submitAndForkRun(getDexScreenerData);
                     }
-                    Thread.sleep(3000);
+                    Thread.sleep(550);
                 }
             } catch (Exception e) {
                 log.error("Solscraper failed. Error: {}", e);
             }
-            Thread.sleep(2000);
+            Thread.sleep(2500);
         }
     }
 

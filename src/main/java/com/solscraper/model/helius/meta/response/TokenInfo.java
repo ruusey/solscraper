@@ -1,5 +1,7 @@
 package com.solscraper.model.helius.meta.response;
 
+import java.math.BigDecimal;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -17,9 +19,9 @@ import lombok.NoArgsConstructor;
 public class TokenInfo {
 
 	@JsonProperty("supply")
-	public Long supply;
+	public BigDecimal supply;
 	@JsonProperty("decimals")
-	public Integer decimals;
+	public BigDecimal decimals;
 	@JsonProperty("token_program")
 	public String tokenProgram;
 
