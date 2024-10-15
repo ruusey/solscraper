@@ -141,34 +141,24 @@ public class SolscraperService {
 					if (mintAccount != null) {
 						final Runnable quickTokenData = () ->{
 							try {
-								TokenMetadataRequest metaDataRequest = TokenMetadataRequest.builder().mintAccounts(Arrays.asList(mintAccountFinal)).includeOffChain(false).build();
+								final TokenMetadataRequest metaDataRequest = TokenMetadataRequest.builder().mintAccounts(Arrays.asList(mintAccountFinal)).includeOffChain(false).build();
 //
 								final MapParamJsonRpcRequest assetRequest = MapParamJsonRpcRequest.getHeliusAssetLookupReqest(mintAccountFinal);
 								final String assetResponse = this.heliusApi2.executePost("", assetRequest);
 								final HeliusMetadataResponse heliusAssetInfo = this.heliusApi2.parseResponse(assetResponse, HeliusMetadataResponse.class);
 								final Result assetResult = heliusAssetInfo.result;
-
-//								final String nftStorageResponse = this.genericApi.executeGet(meta.data.uri);
-//								final TokenMetaData extMeta = this.genericApi.parseResponse(nftStorageResponse, TokenMetaData.class);
-//								log.info(this.heliusApi.getMapper().writeValueAsString(metadata[0]));
-								//log.info(this.heliusApi.getMapper().writeValueAsString(extMeta));
-								StringBuilder builder = new StringBuilder();
+								// TODO: Add back in socials and more in depth authority information
+								final StringBuilder builder = new StringBuilder();
 								builder.append("<u>LATEST MINT @"+new Date(blockTimeFinal)+"</u>\n");
 								builder.append("<b>" + assetResult.content.getMetadata().name + " (" + assetResult.content.getMetadata().symbol + ")</b>\n");
 								builder.append("<b>CA: </b>"+assetResult.id + "\n");
 								for(Authority o : assetResult.authorities) {
 									builder.append("<b>Authority Addr: </b> "+ o.getAddress() + "\n");
 									builder.append("<b>	Scope: </b> "+ o.getScopes().stream().collect(Collectors.joining(", ")) + "\n");
-
 								}
-//								builder.append("<b>Update Authority: </b> "+ meta.updateAuthority + "\n");
-//								builder.append("<b>Freeze Authority: </b> "+(mintInfo.freezeAuthority == null || mintInfo.freezeAuthority.isEmpty() ? "<tg-emoji emoji-id=\"5368324170671202286\">✅</tg-emoji>": "<tg-emoji emoji-id=\"5368324170671202286\">🚨</tg-emoji>")+"\n");
-//								builder.append("<b>Mint Authority: </b> "+ (mintInfo.mintAuthority == null || mintInfo.mintAuthority.isEmpty() ? "<tg-emoji emoji-id=\"5368324170671202286\">✅</tg-emoji>" : "<tg-emoji emoji-id=\"5368324170671202286\">🚨</tg-emoji>")+"\n");
-//								if(extMeta!=null && extMeta.extensions!=null) {
-//									builder.append("\nTelegram: "+extMeta.extensions.telegram+"\nTwitter: "+extMeta.extensions.twitter+"\nWebsite:"+ extMeta.extensions.website);
-//								}
 								final String imageUrl = assetResult.content.getFiles().get(0).uri;
-								this.telegramService.sendGroupMessage(builder.toString(), imageUrl);
+								final String imageUrl0 = assetResult.content.getFiles().get(0).cdnUri;
+								this.telegramService.sendGroupMessage(builder.toString(), imageUrl0);
 							}catch(Exception e) {
 								log.error("Failed to get quick data from Solana Explorer for quick token data, {}",e);
 							}
@@ -207,12 +197,12 @@ public class SolscraperService {
 						};
 						WorkerThread.submitAndForkRun(getDexScreenerData);
 					}
-					Thread.sleep(2000);
+					Thread.sleep(1200);
 				}
 			}catch(Exception e) {
 				log.error("Solscraper failed. Error: {}", e);
 			}
-			Thread.sleep(5000);
+			Thread.sleep(3000);
 
 		}	
 	}
