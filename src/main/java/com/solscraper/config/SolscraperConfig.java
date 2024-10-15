@@ -15,4 +15,8 @@ public class SolscraperConfig {
 		TelegramBot bot = new TelegramBot(this.telegramBotToken);
 		return bot;
 	}
+	
+	public void setTelegramBotToken(String token) {
+	    this.telegramBotToken = token;
+	}
 }	
