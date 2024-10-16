@@ -51,7 +51,6 @@ public class SolscraperService {
     private transient ApiSessionOkHttp dexScreenerApi;
     private transient ApiSessionOkHttp discordApi;
     private transient ApiSessionOkHttp heliusApi;
-    private transient ApiSessionOkHttp heliusApi2;
     private transient ApiSessionOkHttp genericApi;
 
     private final transient TelegramBotService telegramService;
@@ -63,10 +62,8 @@ public class SolscraperService {
     private String rawDiscordWebhook;
     @Value("${service.discord.webhook.token}")
     private String tokenDiscordWebhook;
-    @Value("${service.helius0}")
-    private String helius0Url;
-    @Value("${service.helius1}")
-    private String helius1Url;
+    @Value("${service.helius}")
+    private String heliusUrl;
 
     public SolscraperService(@Autowired final TelegramBotService telegramService) {
         this.telegramService = telegramService;
@@ -78,8 +75,7 @@ public class SolscraperService {
     private void initApis() {
         this.dexScreenerApi = new ApiSessionOkHttp("https://api.dexscreener.com/latest");
         this.discordApi = new ApiSessionOkHttp("https://discordapp.com");
-        this.heliusApi = new ApiSessionOkHttp(this.helius0Url);
-        this.heliusApi2 = new ApiSessionOkHttp(this.helius1Url);
+        this.heliusApi = new ApiSessionOkHttp(this.heliusUrl);
         this.genericApi = new ApiSessionOkHttp("");
         Runtime.getRuntime().addShutdownHook(this.getShutdownManager());
     }
@@ -89,10 +85,12 @@ public class SolscraperService {
         // Loop while we haven't shutdown
         while (!this.shutdown) {
             try {
-                // Execute a POST to SolExplorer to get the latest transactions against the
+                // Execute a POST to Helius to get the latest transactions against the
                 // Raydium Token Program Contract
-                final String response = this.heliusApi2.executePost("", JsonRpcRequest.getSignatureRequest());
-                final SolExplorerResponse solscan = this.heliusApi2.parseResponse(response, SolExplorerResponse.class);
+                final String response = this.heliusApi.executePost("", JsonRpcRequest.getSignatureRequest());
+                
+                // Note: SolExplorer just mirrors the JsonRPC structure of Helius
+                final SolExplorerResponse solscan = this.heliusApi.parseResponse(response, SolExplorerResponse.class);
                 // For each row in the transactions table
                 if (this.firstFetch) {
                     this.firstFetch = false;
@@ -107,7 +105,7 @@ public class SolscraperService {
 
                     final String signature = result.getSignature();
                     final JsonRpcRequest tx = JsonRpcRequest.getTransactionRequest(signature);
-                    final String transaction = this.heliusApi2.executePost("", tx);
+                    final String transaction = this.heliusApi.executePost("", tx);
 
                     // See if we can find successful mint information in the transaction
                     final int startIdx = transaction.indexOf("\"mint\"");
@@ -116,7 +114,7 @@ public class SolscraperService {
                         continue;
                     }
 
-                    final TransactionLookupResponse transactionParsed = this.heliusApi2.parseResponse(transaction,
+                    final TransactionLookupResponse transactionParsed = this.heliusApi.parseResponse(transaction,
                             TransactionLookupResponse.class);
                     String mintAccount = null;
                     // Loop through all the instructions from the transaction to find the
@@ -131,6 +129,8 @@ public class SolscraperService {
                             }
                         }
                     }
+                    
+                    // If the token isnt Wrapped Solana which is minted quite frequently
                     if (mintAccount.equalsIgnoreCase("So11111111111111111111111111111111111111112")) {
                         continue;
                     }
@@ -143,8 +143,8 @@ public class SolscraperService {
                                 TokenMetadataRequest metaDataRequest = TokenMetadataRequest.builder().mintAccounts(Arrays.asList(mintAccountFinal))
                                         .includeOffChain(false).build();
                                 final MapParamJsonRpcRequest assetRequest = MapParamJsonRpcRequest.getHeliusAssetLookupReqest(mintAccountFinal);
-                                final String assetResponse = this.heliusApi2.executePost("", assetRequest);
-                                final HeliusMetadataResponse heliusAssetInfo = this.heliusApi2.parseResponse(assetResponse,
+                                final String assetResponse = this.heliusApi.executePost("", assetRequest);
+                                final HeliusMetadataResponse heliusAssetInfo = this.heliusApi.parseResponse(assetResponse,
                                         HeliusMetadataResponse.class);
                                 final Result assetResult = heliusAssetInfo.result;
                                 final StringBuilder builder = new StringBuilder();
