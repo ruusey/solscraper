@@ -18,6 +18,6 @@ import lombok.NoArgsConstructor;
 public class Attributes {
 
 	@JsonProperty("ohlcv_list")
-	public List<List<Double>> ohlcvList;
+	private List<List<Double>> ohlcvList;
 
 }

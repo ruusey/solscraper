@@ -17,14 +17,14 @@ import lombok.NoArgsConstructor;
 public class Ownership {
 
 	@JsonProperty("frozen")
-	public Boolean frozen;
+	private Boolean frozen;
 	@JsonProperty("delegated")
-	public Boolean delegated;
+	private Boolean delegated;
 	@JsonProperty("delegate")
-	public Object delegate;
+	private Object delegate;
 	@JsonProperty("ownership_model")
-	public String ownershipModel;
+	private String ownershipModel;
 	@JsonProperty("owner")
-	public String owner;
+	private String owner;
 
 }

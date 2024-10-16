@@ -19,14 +19,14 @@ import lombok.NoArgsConstructor;
 public class Info {
 
 	@JsonProperty("decimals")
-	public BigDecimal decimals;
+	private BigDecimal decimals;
 	@JsonProperty("freezeAuthority")
-	public String freezeAuthority;
+	private String freezeAuthority;
 	@JsonProperty("isInitialized")
-	public Boolean isInitialized;
+	private Boolean isInitialized;
 	@JsonProperty("mintAuthority")
-	public String mintAuthority;
+	private String mintAuthority;
 	@JsonProperty("supply")
-	public String supply;
+	private String supply;
 
 }

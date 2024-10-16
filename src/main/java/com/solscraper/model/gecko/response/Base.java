@@ -17,12 +17,12 @@ import lombok.NoArgsConstructor;
 public class Base {
 
 	@JsonProperty("address")
-	public String address;
+	private String address;
 	@JsonProperty("name")
-	public String name;
+	private String name;
 	@JsonProperty("symbol")
-	public String symbol;
+	private String symbol;
 	@JsonProperty("coingecko_coin_id")
-	public String coingeckoCoinId;
+	private String coingeckoCoinId;
 
 }

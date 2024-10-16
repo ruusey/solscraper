@@ -21,9 +21,9 @@ import com.solscraper.model.dexscreener.response.Pair;
 import com.solscraper.model.discord.webhook.WebhookPostRequest;
 import com.solscraper.model.helius.meta.response.Authority;
 import com.solscraper.model.helius.meta.response.HeliusMetadataResponse;
+import com.solscraper.model.helius.meta.response.Metadata;
 import com.solscraper.model.helius.meta.response.Result;
 import com.solscraper.model.helius.request.TokenMetadataRequest;
-import com.solscraper.model.helius.response.Metadata;
 import com.solscraper.model.helius.response.TokenMetadataResponse;
 import com.solscraper.model.jsonrpc.request.JsonRpcRequest;
 import com.solscraper.model.jsonrpc.request.MapParamJsonRpcRequest;
@@ -51,7 +51,6 @@ public class SolscraperService {
     private transient ApiSessionOkHttp dexScreenerApi;
     private transient ApiSessionOkHttp discordApi;
     private transient ApiSessionOkHttp heliusApi;
-    private transient ApiSessionOkHttp heliusApi2;
     private transient ApiSessionOkHttp genericApi;
 
     private final transient TelegramBotService telegramService;
@@ -63,10 +62,8 @@ public class SolscraperService {
     private String rawDiscordWebhook;
     @Value("${service.discord.webhook.token}")
     private String tokenDiscordWebhook;
-    @Value("${service.helius0}")
-    private String helius0Url;
-    @Value("${service.helius1}")
-    private String helius1Url;
+    @Value("${service.helius}")
+    private String heliusUrl;
 
     public SolscraperService(@Autowired final TelegramBotService telegramService) {
         this.telegramService = telegramService;
@@ -78,21 +75,24 @@ public class SolscraperService {
     private void initApis() {
         this.dexScreenerApi = new ApiSessionOkHttp("https://api.dexscreener.com/latest");
         this.discordApi = new ApiSessionOkHttp("https://discordapp.com");
-        this.heliusApi = new ApiSessionOkHttp(this.helius0Url);
-        this.heliusApi2 = new ApiSessionOkHttp(this.helius1Url);
+        this.heliusApi = new ApiSessionOkHttp(this.heliusUrl);
         this.genericApi = new ApiSessionOkHttp("");
         Runtime.getRuntime().addShutdownHook(this.getShutdownManager());
     }
 
+    // Yes this should be split into multiple methods
+    // does that mean im gonna do it? No.
     @EventListener(ApplicationReadyEvent.class)
     public void start() throws Exception {
         // Loop while we haven't shutdown
         while (!this.shutdown) {
             try {
-                // Execute a POST to SolExplorer to get the latest transactions against the
+                // Execute a POST to Helius to get the latest transactions against the
                 // Raydium Token Program Contract
-                final String response = this.heliusApi2.executePost("", JsonRpcRequest.getSignatureRequest());
-                final SolExplorerResponse solscan = this.heliusApi2.parseResponse(response, SolExplorerResponse.class);
+                final String response = this.heliusApi.executePost("", JsonRpcRequest.getSignatureRequest());
+                
+                // Note: SolExplorer just mirrors the JsonRPC structure of Helius
+                final SolExplorerResponse solscan = this.heliusApi.parseResponse(response, SolExplorerResponse.class);
                 // For each row in the transactions table
                 if (this.firstFetch) {
                     this.firstFetch = false;
@@ -105,9 +105,10 @@ public class SolscraperService {
                         this.seenTransactions.add(result.getSignature());
                     }
 
+                    // Get the transaction details using its signature
                     final String signature = result.getSignature();
                     final JsonRpcRequest tx = JsonRpcRequest.getTransactionRequest(signature);
-                    final String transaction = this.heliusApi2.executePost("", tx);
+                    final String transaction = this.heliusApi.executePost("", tx);
 
                     // See if we can find successful mint information in the transaction
                     final int startIdx = transaction.indexOf("\"mint\"");
@@ -116,21 +117,23 @@ public class SolscraperService {
                         continue;
                     }
 
-                    final TransactionLookupResponse transactionParsed = this.heliusApi2.parseResponse(transaction,
+                    final TransactionLookupResponse transactionParsed = this.heliusApi.parseResponse(transaction,
                             TransactionLookupResponse.class);
                     String mintAccount = null;
                     // Loop through all the instructions from the transaction to find the
                     // initializeTokenAccount instruction (Has Mint, New Pair Information)
-                    for (final InnerInstruction instruction : transactionParsed.result.meta.innerInstructions) {
-                        for (final Instruction innerInstruction : instruction.instructions) {
-                            if (innerInstruction == null || innerInstruction.parsed == null || innerInstruction.parsed.getType() == null)
+                    for (final InnerInstruction instruction : transactionParsed.getResult().getMeta().getInnerInstructions()) {
+                        for (final Instruction innerInstruction : instruction.getInstructions()) {
+                            if (innerInstruction == null || innerInstruction.getParsed() == null || innerInstruction.getParsed().getType() == null)
                                 continue;
-                            if (innerInstruction.parsed.getType().contains("initializeAccount")) {
-                                mintAccount = innerInstruction.parsed.info.get("mint").toString();
+                            if (innerInstruction.getParsed().getType().contains("initializeAccount")) {
+                                mintAccount = innerInstruction.getParsed().getInfo().get("mint").toString();
                                 break;
                             }
                         }
                     }
+                    
+                    // If the token isnt Wrapped Solana which is minted quite frequently
                     if (mintAccount.equalsIgnoreCase("So11111111111111111111111111111111111111112")) {
                         continue;
                     }
@@ -140,36 +143,40 @@ public class SolscraperService {
                     if (mintAccount != null) {
                         final Runnable quickTokenData = () -> {
                             try {
-                                TokenMetadataRequest metaDataRequest = TokenMetadataRequest.builder().mintAccounts(Arrays.asList(mintAccountFinal))
+                                final TokenMetadataRequest metaDataRequest = TokenMetadataRequest.builder().mintAccounts(Arrays.asList(mintAccountFinal))
                                         .includeOffChain(false).build();
                                 final MapParamJsonRpcRequest assetRequest = MapParamJsonRpcRequest.getHeliusAssetLookupReqest(mintAccountFinal);
-                                final String assetResponse = this.heliusApi2.executePost("", assetRequest);
-                                final HeliusMetadataResponse heliusAssetInfo = this.heliusApi2.parseResponse(assetResponse,
+                                final String assetResponse = this.heliusApi.executePost("", assetRequest);
+                                final HeliusMetadataResponse heliusAssetInfo = this.heliusApi.parseResponse(assetResponse,
                                         HeliusMetadataResponse.class);
-                                final Result assetResult = heliusAssetInfo.result;
+                                final Result assetResult = heliusAssetInfo.getResult();
+                                final Metadata tokenMeta = assetResult.getContent().getMetadata();
                                 final StringBuilder builder = new StringBuilder();
                                 final StringBuilder builderDiscord = new StringBuilder();
                                 builder.append("<u>LATEST MINT @" + new Date(blockTimeFinal) + "</u>\n");
                                 builderDiscord.append("__LATEST MINT @" + new Date(blockTimeFinal) + "__\n");
 
                                 builder.append(
-                                        "<b>" + assetResult.content.getMetadata().name + " (" + assetResult.content.getMetadata().symbol + ")</b>\n");
+                                        "<b>" +tokenMeta.getName() + " (" + tokenMeta.getSymbol() + ")</b>\n");
                                 builderDiscord.append(
-                                        "**" + assetResult.content.getMetadata().name + " (" + assetResult.content.getMetadata().symbol + ")**\n");
+                                        "**" + tokenMeta.getName() + " (" + tokenMeta.getSymbol() + ")**\n");
 
                
-                                builder.append("<b>CA: </b>" + assetResult.id + "\n");
-                                builderDiscord.append("**CA: **" + assetResult.id + "\n");
+                                builder.append("<b>CA: </b>" + assetResult.getId() + "\n");
+                                builderDiscord.append("**CA: **" + assetResult.getId() + "\n");
 
-                                for (Authority o : assetResult.authorities) {
+                                for (Authority o : assetResult.getAuthorities()) {
+                                	String scopesConcat = o.getScopes().stream().collect(Collectors.joining(", "));
                                     builder.append("<b>Authority Addr: </b> " + o.getAddress() + "\n");
+                                    builder.append(scopesConcat);
                                     builderDiscord.append("**Authority Addr: ** " + o.getAddress() + "\n");
+                                    builderDiscord.append(scopesConcat);
                                 }
 
-                                if(assetResult.content.getFiles().get(0)!=null) {
-                                    final String imageUrl = assetResult.content.getFiles().get(0).uri;
+                                if(assetResult.getContent().getFiles().get(0)!=null) {
+                                    final String imageUrl = assetResult.getContent().getFiles().get(0).getUri();
                                     builderDiscord.append(imageUrl);
-                                    log.info("Publishing RAW token update for {}",  assetResult.content.getMetadata().name+"("+assetResult.content.getMetadata().symbol+")");
+                                    log.info("Publishing RAW token update for {}",  tokenMeta.getName()+"("+tokenMeta.getSymbol()+")");
                                     this.postToDiscordWebhookRaw(builderDiscord.toString());
                                     this.telegramService.sendGroupMessage(builder.toString(), imageUrl);
                                 }
@@ -184,8 +191,8 @@ public class SolscraperService {
                             try {
                                 Thread.sleep(100000);
                                 final DexScreenerResponse dexScreenerResponse = this.searchTokenPoolInformation(mintAccountFinal);
-                                if (dexScreenerResponse != null && dexScreenerResponse.pairs != null && dexScreenerResponse.pairs.size() > 0) {
-                                    final Pair pair = dexScreenerResponse.pairs.get(0);
+                                if (dexScreenerResponse != null && dexScreenerResponse.getPairs() != null && dexScreenerResponse.getPairs().size() > 0) {
+                                    final Pair pair = dexScreenerResponse.getPairs().get(0);
                                     final BaseToken token = pair.getBaseToken();
 
                                     if (new BigDecimal(pair.getFdv()).compareTo(new BigDecimal(240000)) == 1) {

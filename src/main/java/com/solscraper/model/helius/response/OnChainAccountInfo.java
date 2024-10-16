@@ -17,8 +17,8 @@ import lombok.NoArgsConstructor;
 public class OnChainAccountInfo {
 
 	@JsonProperty("accountInfo")
-	public AccountInfo accountInfo;
+	private AccountInfo accountInfo;
 	@JsonProperty("error")
-	public String error;
+	private String error;
 
 }

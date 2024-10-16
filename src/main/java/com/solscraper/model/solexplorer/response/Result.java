@@ -1,7 +1,6 @@
 package com.solscraper.model.solexplorer.response;
 
 import java.util.List;
-import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -21,16 +20,16 @@ import lombok.NoArgsConstructor;
 public class Result {
 
 	@JsonProperty("blockTime")
-	public Integer blockTime;
+	private Integer blockTime;
 	@JsonProperty("meta")
-	public Meta meta;
+	private Meta meta;
 	@JsonProperty("slot")
-	public Integer slot;
+	private Integer slot;
 	@JsonProperty("transaction")
-	public Transaction transaction;
+	private Transaction transaction;
 	@JsonProperty("version")
-	public String version;
+	private String version;
 	@JsonProperty("value")
-	public List<Object> value;
+	private List<Object> value;
 
 }

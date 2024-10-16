@@ -16,9 +16,9 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class OnChainMetadata {
 
-@JsonProperty("metadata")
-public Metadata metadata;
-@JsonProperty("error")
-public String error;
+	@JsonProperty("metadata")
+	private Metadata metadata;
+	@JsonProperty("error")
+	private String error;
 
 }

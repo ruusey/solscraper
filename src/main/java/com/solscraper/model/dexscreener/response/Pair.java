@@ -17,31 +17,31 @@ import lombok.NoArgsConstructor;
 public class Pair {
 
 	@JsonProperty("chainId")
-	public String chainId;
+	private String chainId;
 	@JsonProperty("dexId")
-	public String dexId;
+	private String dexId;
 	@JsonProperty("url")
-	public String url;
+	private String url;
 	@JsonProperty("pairAddress")
-	public String pairAddress;
+	private String pairAddress;
 	@JsonProperty("baseToken")
-	public BaseToken baseToken;
+	private BaseToken baseToken;
 	@JsonProperty("quoteToken")
-	public QuoteToken quoteToken;
+	private QuoteToken quoteToken;
 	@JsonProperty("priceNative")
-	public String priceNative;
+	private String priceNative;
 	@JsonProperty("priceUsd")
-	public String priceUsd;
+	private String priceUsd;
 	@JsonProperty("txns")
-	public Txns txns;
+	private Txns txns;
 	@JsonProperty("volume")
-	public Volume volume;
+	private Volume volume;
 	@JsonProperty("priceChange")
-	public PriceChange priceChange;
+	private PriceChange priceChange;
 	@JsonProperty("liquidity")
-	public Liquidity liquidity;
+	private Liquidity liquidity;
 	@JsonProperty("fdv")
-	public Long fdv;
+	private Long fdv;
 	@JsonProperty("pairCreatedAt")
-	public Long pairCreatedAt;
+	private Long pairCreatedAt;
 }

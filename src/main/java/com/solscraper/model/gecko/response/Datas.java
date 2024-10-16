@@ -17,10 +17,10 @@ import lombok.NoArgsConstructor;
 public class Datas {
 
 	@JsonProperty("id")
-	public String id;
+	private String id;
 	@JsonProperty("type")
-	public String type;
+	private String type;
 	@JsonProperty("attributes")
-	public Attributes attributes;
+	private Attributes attributes;
 
 }

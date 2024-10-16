@@ -17,12 +17,12 @@ import lombok.NoArgsConstructor;
 public class TokenMetadataResponse {
 
 	@JsonProperty("account")
-	public String account;
+	private String account;
 	@JsonProperty("onChainAccountInfo")
-	public OnChainAccountInfo onChainAccountInfo;
+	private OnChainAccountInfo onChainAccountInfo;
 	@JsonProperty("onChainMetadata")
-	public OnChainMetadata onChainMetadata;
+	private OnChainMetadata onChainMetadata;
 	@JsonProperty("legacyMetadata")
-	public Object legacyMetadata;
+	private Object legacyMetadata;
 
 }

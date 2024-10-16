@@ -17,10 +17,10 @@ import lombok.NoArgsConstructor;
 public class TransactionLookupResponse {
 
 	@JsonProperty("jsonrpc")
-	public String jsonrpc;
+	private String jsonrpc;
 	@JsonProperty("result")
-	public Result result;
+	private Result result;
 	@JsonProperty("id")
-	public String id;
+	private String id;
 
 }

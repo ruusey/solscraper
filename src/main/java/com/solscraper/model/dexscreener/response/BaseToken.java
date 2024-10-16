@@ -17,10 +17,10 @@ import lombok.NoArgsConstructor;
 public class BaseToken {
 
 	@JsonProperty("address")
-	public String address;
+	private String address;
 	@JsonProperty("name")
-	public String name;
+	private String name;
 	@JsonProperty("symbol")
-	public String symbol;
+	private String symbol;
 
 }

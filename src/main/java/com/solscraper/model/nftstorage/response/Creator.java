@@ -17,8 +17,8 @@ import lombok.NoArgsConstructor;
 public class Creator {
 
 	@JsonProperty("name")
-	public String name;
+	private String name;
 	@JsonProperty("site")
-	public String site;
+	private String site;
 
 }

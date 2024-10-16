@@ -18,8 +18,8 @@ import lombok.NoArgsConstructor;
 public class InnerInstruction {
 
 	@JsonProperty("index")
-	public Integer index;
+	private Integer index;
 	@JsonProperty("instructions")
-	public List<Instruction> instructions;
+	private List<Instruction> instructions;
 
 }

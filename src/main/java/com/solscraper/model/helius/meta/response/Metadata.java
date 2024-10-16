@@ -1,27 +1,28 @@
 package com.solscraper.model.helius.meta.response;
 
-import javax.annotation.Generated;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-"description",
-"name",
-"symbol",
-"token_standard"
-})
-@Generated("jsonschema2pojo")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Metadata {
 
-@JsonProperty("description")
-public String description;
-@JsonProperty("name")
-public String name;
-@JsonProperty("symbol")
-public String symbol;
-@JsonProperty("token_standard")
-public String tokenStandard;
+	@JsonProperty("description")
+	private String description;
+	@JsonProperty("name")
+	private String name;
+	@JsonProperty("symbol")
+	private String symbol;
+	@JsonProperty("token_standard")
+	private String tokenStandard;
 
 }

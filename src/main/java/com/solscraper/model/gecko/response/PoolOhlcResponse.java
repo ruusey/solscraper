@@ -23,6 +23,6 @@ public class PoolOhlcResponse {
 	public Meta meta;
 	
 	public List<List<Double>> getTicks(){
-		return this.data.attributes.ohlcvList;
+		return this.data.getAttributes().getOhlcvList();
 	}
 }

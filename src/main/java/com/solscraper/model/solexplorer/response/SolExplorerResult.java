@@ -15,16 +15,16 @@ import lombok.NoArgsConstructor;
 public class SolExplorerResult {
 
 	@JsonProperty("blockTime")
-	public Integer blockTime;
+	private Integer blockTime;
 	@JsonProperty("confirmationStatus")
-	public String confirmationStatus;
+	private String confirmationStatus;
 	@JsonProperty("err")
-	public Object err;
+	private Object err;
 	@JsonProperty("memo")
-	public Object memo;
+	private Object memo;
 	@JsonProperty("signature")
-	public String signature;
+	private String signature;
 	@JsonProperty("slot")
-	public Integer slot;
+	private Integer slot;
 
 }

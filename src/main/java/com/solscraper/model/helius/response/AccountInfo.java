@@ -19,20 +19,20 @@ import lombok.NoArgsConstructor;
 public class AccountInfo {
 
 	@JsonProperty("key")
-	public String key;
+	private String key;
 	@JsonProperty("isSigner")
-	public Boolean isSigner;
+	private Boolean isSigner;
 	@JsonProperty("isWritable")
-	public Boolean isWritable;
+	private Boolean isWritable;
 	@JsonProperty("lamports")
-	public BigDecimal lamports;
+	private BigDecimal lamports;
 	@JsonProperty("data")
-	public Datas data;
+	private Datas data;
 	@JsonProperty("owner")
-	public String owner;
+	private String owner;
 	@JsonProperty("executable")
-	public Boolean executable;
+	private Boolean executable;
 	@JsonProperty("rentEpoch")
-	public BigDecimal rentEpoch;
+	private BigDecimal rentEpoch;
 
 }

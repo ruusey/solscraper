@@ -18,8 +18,8 @@ import lombok.NoArgsConstructor;
 public class DexScreenerResponse {
 
 	@JsonProperty("schemaVersion")
-	public String schemaVersion;
+	private String schemaVersion;
 	@JsonProperty("pairs")
-	public List<Pair> pairs;
+	private List<Pair> pairs;
 
 }
