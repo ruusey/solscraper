@@ -19,10 +19,10 @@ import lombok.NoArgsConstructor;
 public class TokenInfo {
 
 	@JsonProperty("supply")
-	public BigDecimal supply;
+	private BigDecimal supply;
 	@JsonProperty("decimals")
-	public BigDecimal decimals;
+	private BigDecimal decimals;
 	@JsonProperty("token_program")
-	public String tokenProgram;
+	private String tokenProgram;
 
 }

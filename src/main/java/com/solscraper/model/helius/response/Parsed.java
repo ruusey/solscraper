@@ -17,8 +17,8 @@ import lombok.NoArgsConstructor;
 public class Parsed {
 
 	@JsonProperty("info")
-	public Info info;
+	private Info info;
 	@JsonProperty("type")
-	public String type;
+	private String type;
 
 }

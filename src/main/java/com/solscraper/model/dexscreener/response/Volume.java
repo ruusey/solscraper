@@ -19,12 +19,12 @@ import lombok.NoArgsConstructor;
 public class Volume {
 
 	@JsonProperty("h24")
-	public BigDecimal h24;
+	private BigDecimal h24;
 	@JsonProperty("h6")
-	public BigDecimal h6;
+	private BigDecimal h6;
 	@JsonProperty("h1")
-	public BigDecimal h1;
+	private BigDecimal h1;
 	@JsonProperty("m5")
-	public BigDecimal m5;
+	private BigDecimal m5;
 
 }

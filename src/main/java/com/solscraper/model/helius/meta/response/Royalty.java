@@ -17,16 +17,16 @@ import lombok.NoArgsConstructor;
 public class Royalty {
 
 	@JsonProperty("royalty_model")
-	public String royaltyModel;
+	private String royaltyModel;
 	@JsonProperty("target")
-	public Object target;
+	private Object target;
 	@JsonProperty("percent")
-	public Integer percent;
+	private Integer percent;
 	@JsonProperty("basis_points")
-	public Integer basisPoints;
+	private Integer basisPoints;
 	@JsonProperty("primary_sale_happened")
-	public Boolean primarySaleHappened;
+	private Boolean primarySaleHappened;
 	@JsonProperty("locked")
-	public Boolean locked;
+	private Boolean locked;
 
 }

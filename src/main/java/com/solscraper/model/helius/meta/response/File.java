@@ -17,10 +17,10 @@ import lombok.NoArgsConstructor;
 public class File {
 
 	@JsonProperty("uri")
-	public String uri;
+	private String uri;
 	@JsonProperty("cdn_uri")
-	public String cdnUri;
+	private String cdnUri;
 	@JsonProperty("mime")
-	public String mime;
+	private String mime;
 
 }

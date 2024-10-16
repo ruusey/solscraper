@@ -19,10 +19,10 @@ import lombok.NoArgsConstructor;
 public class Uses {
 
 	@JsonProperty("useMethod")
-	public String useMethod;
+	private String useMethod;
 	@JsonProperty("remaining")
-	public BigDecimal remaining;
+	private BigDecimal remaining;
 	@JsonProperty("total")
-	public BigDecimal total;
+	private BigDecimal total;
 
 }

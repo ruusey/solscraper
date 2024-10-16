@@ -17,8 +17,8 @@ import lombok.NoArgsConstructor;
 public class Meta {
 
 	@JsonProperty("base")
-	public Base base;
+	private Base base;
 	@JsonProperty("quote")
-	public Quote quote;
+	private Quote quote;
 
 }

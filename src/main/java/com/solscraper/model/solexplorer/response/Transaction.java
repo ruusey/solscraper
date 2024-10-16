@@ -20,8 +20,8 @@ import lombok.NoArgsConstructor;
 public class Transaction {
 
 	@JsonProperty("message")
-	public Object message;
+	private Object message;
 	@JsonProperty("signatures")
-	public List<String> signatures;
+	private List<String> signatures;
 
 }

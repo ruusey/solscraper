@@ -19,10 +19,10 @@ import lombok.NoArgsConstructor;
 public class Liquidity {
 
 	@JsonProperty("usd")
-	public BigDecimal usd;
+	private BigDecimal usd;
 	@JsonProperty("base")
-	public BigDecimal base;
+	private BigDecimal base;
 	@JsonProperty("quote")
-	public BigDecimal quote;
+	private BigDecimal quote;
 
 }

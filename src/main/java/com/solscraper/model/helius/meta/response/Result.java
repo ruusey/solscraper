@@ -18,30 +18,30 @@ import lombok.NoArgsConstructor;
 public class Result {
 
 	@JsonProperty("interface")
-	public String _interface;
+	private String _interface;
 	@JsonProperty("id")
-	public String id;
+	private String id;
 	@JsonProperty("content")
-	public Content content;
+	private Content content;
 	@JsonProperty("authorities")
-	public List<Authority> authorities;
+	private List<Authority> authorities;
 	@JsonProperty("compression")
-	public Compression compression;
+	private Compression compression;
 	@JsonProperty("grouping")
-	public List<Object> grouping;
+	private List<Object> grouping;
 	@JsonProperty("royalty")
-	public Royalty royalty;
+	private Royalty royalty;
 	@JsonProperty("creators")
-	public List<Object> creators;
+	private List<Object> creators;
 	@JsonProperty("ownership")
-	public Ownership ownership;
+	private Ownership ownership;
 	@JsonProperty("supply")
-	public Object supply;
+	private Object supply;
 	@JsonProperty("mutable")
-	public Boolean mutable;
+	private Boolean mutable;
 	@JsonProperty("burnt")
-	public Boolean burnt;
+	private Boolean burnt;
 	@JsonProperty("token_info")
-	public TokenInfo tokenInfo;
+	private TokenInfo tokenInfo;
 
 }

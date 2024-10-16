@@ -122,12 +122,12 @@ public class SolscraperService {
                     String mintAccount = null;
                     // Loop through all the instructions from the transaction to find the
                     // initializeTokenAccount instruction (Has Mint, New Pair Information)
-                    for (final InnerInstruction instruction : transactionParsed.result.meta.innerInstructions) {
-                        for (final Instruction innerInstruction : instruction.instructions) {
-                            if (innerInstruction == null || innerInstruction.parsed == null || innerInstruction.parsed.getType() == null)
+                    for (final InnerInstruction instruction : transactionParsed.getResult().getMeta().getInnerInstructions()) {
+                        for (final Instruction innerInstruction : instruction.getInstructions()) {
+                            if (innerInstruction == null || innerInstruction.getParsed() == null || innerInstruction.getParsed().getType() == null)
                                 continue;
-                            if (innerInstruction.parsed.getType().contains("initializeAccount")) {
-                                mintAccount = innerInstruction.parsed.info.get("mint").toString();
+                            if (innerInstruction.getParsed().getType().contains("initializeAccount")) {
+                                mintAccount = innerInstruction.getParsed().getInfo().get("mint").toString();
                                 break;
                             }
                         }
@@ -149,30 +149,31 @@ public class SolscraperService {
                                 final String assetResponse = this.heliusApi.executePost("", assetRequest);
                                 final HeliusMetadataResponse heliusAssetInfo = this.heliusApi.parseResponse(assetResponse,
                                         HeliusMetadataResponse.class);
-                                final Result assetResult = heliusAssetInfo.result;
+                                final Result assetResult = heliusAssetInfo.getResult();
+                                final com.solscraper.model.helius.meta.response.Metadata tokenMeta = assetResult.getContent().getMetadata();
                                 final StringBuilder builder = new StringBuilder();
                                 final StringBuilder builderDiscord = new StringBuilder();
                                 builder.append("<u>LATEST MINT @" + new Date(blockTimeFinal) + "</u>\n");
                                 builderDiscord.append("__LATEST MINT @" + new Date(blockTimeFinal) + "__\n");
 
                                 builder.append(
-                                        "<b>" + assetResult.content.getMetadata().name + " (" + assetResult.content.getMetadata().symbol + ")</b>\n");
+                                        "<b>" +tokenMeta.getName() + " (" + tokenMeta.getSymbol() + ")</b>\n");
                                 builderDiscord.append(
-                                        "**" + assetResult.content.getMetadata().name + " (" + assetResult.content.getMetadata().symbol + ")**\n");
+                                        "**" + tokenMeta.getName() + " (" + tokenMeta.getSymbol() + ")**\n");
 
                
-                                builder.append("<b>CA: </b>" + assetResult.id + "\n");
-                                builderDiscord.append("**CA: **" + assetResult.id + "\n");
+                                builder.append("<b>CA: </b>" + assetResult.getId() + "\n");
+                                builderDiscord.append("**CA: **" + assetResult.getId() + "\n");
 
-                                for (Authority o : assetResult.authorities) {
+                                for (Authority o : assetResult.getAuthorities()) {
                                     builder.append("<b>Authority Addr: </b> " + o.getAddress() + "\n");
                                     builderDiscord.append("**Authority Addr: ** " + o.getAddress() + "\n");
                                 }
 
-                                if(assetResult.content.getFiles().get(0)!=null) {
-                                    final String imageUrl = assetResult.content.getFiles().get(0).uri;
+                                if(assetResult.getContent().getFiles().get(0)!=null) {
+                                    final String imageUrl = assetResult.getContent().getFiles().get(0).getUri();
                                     builderDiscord.append(imageUrl);
-                                    log.info("Publishing RAW token update for {}",  assetResult.content.getMetadata().name+"("+assetResult.content.getMetadata().symbol+")");
+                                    log.info("Publishing RAW token update for {}",  tokenMeta.getName()+"("+tokenMeta.getSymbol()+")");
                                     this.postToDiscordWebhookRaw(builderDiscord.toString());
                                     this.telegramService.sendGroupMessage(builder.toString(), imageUrl);
                                 }
@@ -187,8 +188,8 @@ public class SolscraperService {
                             try {
                                 Thread.sleep(100000);
                                 final DexScreenerResponse dexScreenerResponse = this.searchTokenPoolInformation(mintAccountFinal);
-                                if (dexScreenerResponse != null && dexScreenerResponse.pairs != null && dexScreenerResponse.pairs.size() > 0) {
-                                    final Pair pair = dexScreenerResponse.pairs.get(0);
+                                if (dexScreenerResponse != null && dexScreenerResponse.getPairs() != null && dexScreenerResponse.getPairs().size() > 0) {
+                                    final Pair pair = dexScreenerResponse.getPairs().get(0);
                                     final BaseToken token = pair.getBaseToken();
 
                                     if (new BigDecimal(pair.getFdv()).compareTo(new BigDecimal(120000)) == 1) {

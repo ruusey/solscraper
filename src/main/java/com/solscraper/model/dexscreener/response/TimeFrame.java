@@ -20,8 +20,8 @@ import lombok.NoArgsConstructor;
 public class TimeFrame {
 
 	@JsonProperty("buys")
-	public BigDecimal buys;
+	private BigDecimal buys;
 	@JsonProperty("sells")
-	public BigDecimal sells;
+	private BigDecimal sells;
 
 }
