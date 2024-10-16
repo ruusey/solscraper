@@ -159,18 +159,19 @@ public class SolscraperService {
 
                
                                 builder.append("<b>CA: </b>" + assetResult.id + "\n");
-                                builderDiscord.append("**CA: </b>" + assetResult.id + "\n");
+                                builderDiscord.append("**CA: **" + assetResult.id + "\n");
 
                                 for (Authority o : assetResult.authorities) {
                                     builder.append("<b>Authority Addr: </b> " + o.getAddress() + "\n");
-                                    builder.append("**Authority Addr: ** " + o.getAddress() + "\n");
+                                    builderDiscord.append("**Authority Addr: ** " + o.getAddress() + "\n");
                                 }
 
                                 if(assetResult.content.getFiles().get(0)!=null) {
                                     final String imageUrl = assetResult.content.getFiles().get(0).uri;
+                                    builderDiscord.append(imageUrl);
                                     log.info("Publishing RAW token update for {}",  assetResult.content.getMetadata().name+"("+assetResult.content.getMetadata().symbol+")");
-                                    this.postToDiscordWebhookRaw(builder.toString());
-                                    this.telegramService.sendGroupMessage(builderDiscord.toString(), imageUrl);
+                                    this.postToDiscordWebhookRaw(builderDiscord.toString());
+                                    this.telegramService.sendGroupMessage(builder.toString(), imageUrl);
                                 }
                             } catch (Exception e) {
                                 log.error("Failed to get quick data from Solana Explorer for quick token data, {}", e);
@@ -187,7 +188,7 @@ public class SolscraperService {
                                     final Pair pair = dexScreenerResponse.pairs.get(0);
                                     final BaseToken token = pair.getBaseToken();
 
-                                    if (new BigDecimal(pair.getFdv()).compareTo(new BigDecimal(80000)) == 1) {
+                                    if (new BigDecimal(pair.getFdv()).compareTo(new BigDecimal(120000)) == 1) {
                                         final String msg = MessageFormat.format(TOKEN_BUY_MSG,
                                                 token.getName() + " (" + token.getSymbol() + ") " + token.getAddress(), pair.getVolume(),
                                                 pair.getLiquidity(), pair.getFdv(), pair.getUrl(), "Mint Datetime: " + new Date(blockTimeFinal));
