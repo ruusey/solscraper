@@ -21,9 +21,9 @@ import com.solscraper.model.dexscreener.response.Pair;
 import com.solscraper.model.discord.webhook.WebhookPostRequest;
 import com.solscraper.model.helius.meta.response.Authority;
 import com.solscraper.model.helius.meta.response.HeliusMetadataResponse;
+import com.solscraper.model.helius.meta.response.Metadata;
 import com.solscraper.model.helius.meta.response.Result;
 import com.solscraper.model.helius.request.TokenMetadataRequest;
-import com.solscraper.model.helius.response.Metadata;
 import com.solscraper.model.helius.response.TokenMetadataResponse;
 import com.solscraper.model.jsonrpc.request.JsonRpcRequest;
 import com.solscraper.model.jsonrpc.request.MapParamJsonRpcRequest;
@@ -143,14 +143,14 @@ public class SolscraperService {
                     if (mintAccount != null) {
                         final Runnable quickTokenData = () -> {
                             try {
-                                TokenMetadataRequest metaDataRequest = TokenMetadataRequest.builder().mintAccounts(Arrays.asList(mintAccountFinal))
+                                final TokenMetadataRequest metaDataRequest = TokenMetadataRequest.builder().mintAccounts(Arrays.asList(mintAccountFinal))
                                         .includeOffChain(false).build();
                                 final MapParamJsonRpcRequest assetRequest = MapParamJsonRpcRequest.getHeliusAssetLookupReqest(mintAccountFinal);
                                 final String assetResponse = this.heliusApi.executePost("", assetRequest);
                                 final HeliusMetadataResponse heliusAssetInfo = this.heliusApi.parseResponse(assetResponse,
                                         HeliusMetadataResponse.class);
                                 final Result assetResult = heliusAssetInfo.getResult();
-                                final com.solscraper.model.helius.meta.response.Metadata tokenMeta = assetResult.getContent().getMetadata();
+                                final Metadata tokenMeta = assetResult.getContent().getMetadata();
                                 final StringBuilder builder = new StringBuilder();
                                 final StringBuilder builderDiscord = new StringBuilder();
                                 builder.append("<u>LATEST MINT @" + new Date(blockTimeFinal) + "</u>\n");
@@ -166,8 +166,11 @@ public class SolscraperService {
                                 builderDiscord.append("**CA: **" + assetResult.getId() + "\n");
 
                                 for (Authority o : assetResult.getAuthorities()) {
+                                	String scopesConcat = o.getScopes().stream().collect(Collectors.joining(", "));
                                     builder.append("<b>Authority Addr: </b> " + o.getAddress() + "\n");
+                                    builder.append(scopesConcat);
                                     builderDiscord.append("**Authority Addr: ** " + o.getAddress() + "\n");
+                                    builderDiscord.append(scopesConcat);
                                 }
 
                                 if(assetResult.getContent().getFiles().get(0)!=null) {
