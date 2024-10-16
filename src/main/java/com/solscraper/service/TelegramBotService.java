@@ -27,7 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class TelegramBotService {
 	private final transient TelegramBot telegramBot;
-	private  transient Properties localState;
+	private transient Properties localState;
 
 	private int lastMessageIdTxt = -1;
 	private int lastMessageIdImg = -1;
@@ -40,19 +40,23 @@ public class TelegramBotService {
 		try {
 			this.localState = PropertiesUtils.loadProperties();
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.error("Failed to construct TelegramBotService. Reason: {}", e);
 			System.exit(-1);
 		}
 		this.lastMessageIdTxt = Integer.parseInt(this.localState.getProperty("tl.last-message-id-txt"));
 		this.lastMessageIdImg = Integer.parseInt(this.localState.getProperty("tl.last-message-id-img"));
 		this.lastMessageIdBasic = Integer.parseInt(this.localState.getProperty("tl.last-message-id-basic"));
-
 	}
 	
+	// Core concept here is that we can update existing messages in TG. We dont want
+	// to innundate our users with messages
+	// First messages sent will save their message IDs in localstate so we
+	// can update them when the next token is broadcast
 	public boolean sendGroupMessage(String text, String imageUrl) throws IOException {
 		boolean ok = false;
 		final URL tokenImageUrl = new URL(imageUrl);
 		final InputStream imageStream = tokenImageUrl.openStream();
+		// First message
 		if(this.lastMessageIdTxt==-1) {
 			final SendMessage request = new SendMessage(this.telegramChannelId, text)
 			        .parseMode(ParseMode.HTML)
@@ -74,7 +78,8 @@ public class TelegramBotService {
 			this.localState.setProperty("tl.last-message-id-txt", this.lastMessageIdTxt+"");
 			this.localState.setProperty("tl.last-message-id-img", this.lastMessageIdImg+"");
 
-			PropertiesUtils.saveProperties(localState);
+			PropertiesUtils.saveProperties(this.localState);
+		// We have already broadcast a token
 		}else {
 			final EditMessageText editMessageText = new EditMessageText(this.telegramChannelId, this.lastMessageIdTxt, text)
 			        .parseMode(ParseMode.HTML)
@@ -93,7 +98,9 @@ public class TelegramBotService {
 		
 	}
 	
+	// Send a simple image without text
 	public void sendSimpleMessage(String text) throws IOException {
+		// First message
 		if(this.lastMessageIdBasic==-1) {
 			final SendMessage request = new SendMessage(this.telegramChannelId , text)
 			        .parseMode(ParseMode.HTML)
@@ -106,7 +113,7 @@ public class TelegramBotService {
 			this.lastMessageIdBasic = message.messageId();
 			this.localState.setProperty("tl.last-message-id-basic", this.lastMessageIdBasic+"");
 			PropertiesUtils.saveProperties(this.localState);
-
+		// We have already broadcast a token
 		}else {
 			final EditMessageText editMessageText = new EditMessageText(this.telegramChannelId, this.lastMessageIdBasic, text)
 			        .parseMode(ParseMode.HTML)
