@@ -17,10 +17,10 @@ import lombok.NoArgsConstructor;
 public class Extensions {
 
 	@JsonProperty("twitter")
-	public String twitter;
+	private String twitter;
 	@JsonProperty("telegram")
-	public String telegram;
+	private String telegram;
 	@JsonProperty("website")
-	public String website;
+	private String website;
 
 }

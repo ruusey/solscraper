@@ -19,26 +19,26 @@ import lombok.NoArgsConstructor;
 public class Metadata {
 
 	@JsonProperty("tokenStandard")
-	public String tokenStandard;
+	private String tokenStandard;
 	@JsonProperty("key")
-	public String key;
+	private String key;
 	@JsonProperty("updateAuthority")
-	public String updateAuthority;
+	private String updateAuthority;
 	@JsonProperty("mint")
-	public String mint;
+	private String mint;
 	@JsonProperty("data")
-	public Datas data;
+	private Datas data;
 	@JsonProperty("primarySaleHappened")
-	public Boolean primarySaleHappened;
+	private Boolean primarySaleHappened;
 	@JsonProperty("isMutable")
-	public Boolean isMutable;
+	private Boolean isMutable;
 	@JsonProperty("editionNonce")
-	public BigDecimal editionNonce;
+	private BigDecimal editionNonce;
 	@JsonProperty("uses")
-	public Uses uses;
+	private Uses uses;
 	@JsonProperty("collection")
-	public Object collection;
+	private Object collection;
 	@JsonProperty("collectionDetails")
-	public Object collectionDetails;
+	private Object collectionDetails;
 
 }

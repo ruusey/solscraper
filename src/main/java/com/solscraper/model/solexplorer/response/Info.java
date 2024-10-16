@@ -18,38 +18,38 @@ import lombok.NoArgsConstructor;
 public class Info {
 
 	@JsonProperty("destination")
-	public String destination;
+	private String destination;
 	@JsonProperty("lamports")
-	public Integer lamports;
+	private Integer lamports;
 	@JsonProperty("source")
-	public String source;
+	private String source;
 	@JsonProperty("account")
-	public String account;
+	private String account;
 	@JsonProperty("space")
-	public Integer space;
+	private Integer space;
 	@JsonProperty("owner")
-	public String owner;
+	private String owner;
 	@JsonProperty("decimals")
-	public Integer decimals;
+	private Integer decimals;
 	@JsonProperty("mint")
-	public String mint;
+	private String mint;
 	@JsonProperty("mintAuthority")
-	public String mintAuthority;
+	private String mintAuthority;
 	@JsonProperty("rentSysvar")
-	public String rentSysvar;
+	private String rentSysvar;
 	@JsonProperty("systemProgram")
-	public String systemProgram;
+	private String systemProgram;
 	@JsonProperty("tokenProgram")
-	public String tokenProgram;
+	private String tokenProgram;
 	@JsonProperty("wallet")
-	public String wallet;
+	private String wallet;
 	@JsonProperty("extensionTypes")
-	public List<String> extensionTypes;
+	private List<String> extensionTypes;
 	@JsonProperty("newAccount")
-	public String newAccount;
+	private String newAccount;
 	@JsonProperty("amount")
-	public String amount;
+	private String amount;
 	@JsonProperty("authority")
-	public String authority;
+	private String authority;
 
 }

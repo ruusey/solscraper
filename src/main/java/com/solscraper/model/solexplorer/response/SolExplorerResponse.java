@@ -16,10 +16,10 @@ import lombok.NoArgsConstructor;
 public class SolExplorerResponse {
 
 	@JsonProperty("jsonrpc")
-	public String jsonrpc;
+	private String jsonrpc;
 	@JsonProperty("result")
-	public List<SolExplorerResult> result;
+	private List<SolExplorerResult> result;
 	@JsonProperty("id")
-	public String id;
+	private String id;
 
 }

@@ -18,18 +18,18 @@ import lombok.NoArgsConstructor;
 public class TokenMetaData {
 
 	@JsonProperty("name")
-	public String name;
+	private String name;
 	@JsonProperty("symbol")
-	public String symbol;
+	private String symbol;
 	@JsonProperty("image")
-	public String image;
+	private String image;
 	@JsonProperty("description")
-	public String description;
+	private String description;
 	@JsonProperty("extensions")
-	public Extensions extensions;
+	private Extensions extensions;
 	@JsonProperty("tags")
-	public List<String> tags;
+	private List<String> tags;
 	@JsonProperty("creator")
-	public Creator creator;
+	private Creator creator;
 
 }

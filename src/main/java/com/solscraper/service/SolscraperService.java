@@ -80,6 +80,8 @@ public class SolscraperService {
         Runtime.getRuntime().addShutdownHook(this.getShutdownManager());
     }
 
+    // Yes this should be split into multiple methods
+    // does that mean im gonna do it? No.
     @EventListener(ApplicationReadyEvent.class)
     public void start() throws Exception {
         // Loop while we haven't shutdown
@@ -103,6 +105,7 @@ public class SolscraperService {
                         this.seenTransactions.add(result.getSignature());
                     }
 
+                    // Get the transaction details using its signature
                     final String signature = result.getSignature();
                     final JsonRpcRequest tx = JsonRpcRequest.getTransactionRequest(signature);
                     final String transaction = this.heliusApi.executePost("", tx);

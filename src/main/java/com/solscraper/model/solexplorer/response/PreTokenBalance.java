@@ -18,11 +18,11 @@ import lombok.NoArgsConstructor;
 public class PreTokenBalance {
 
 	@JsonProperty("accountIndex")
-	public Integer accountIndex;
+	private Integer accountIndex;
 	@JsonProperty("mint")
-	public String mint;
+	private String mint;
 	@JsonProperty("owner")
-	public String owner;
+	private String owner;
 	@JsonProperty("programId")
-	public String programId;
+	private String programId;
 }

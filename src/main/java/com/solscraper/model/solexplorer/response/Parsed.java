@@ -19,8 +19,8 @@ import lombok.NoArgsConstructor;
 public class Parsed {
 
 	@JsonProperty("info")
-	public Map<String, Object> info;
+	private Map<String, Object> info;
 	@JsonProperty("type")
-	public String type;
+	private String type;
 
 }

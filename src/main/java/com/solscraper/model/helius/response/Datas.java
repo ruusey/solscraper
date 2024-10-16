@@ -19,20 +19,20 @@ import lombok.NoArgsConstructor;
 public class Datas {
 
 	@JsonProperty("parsed")
-	public Parsed parsed;
+	private Parsed parsed;
 	@JsonProperty("program")
-	public String program;
+	private String program;
 	@JsonProperty("space")
-	public BigDecimal space;
+	private BigDecimal space;
 	@JsonProperty("name")
-	public String name;
+	private String name;
 	@JsonProperty("symbol")
-	public String symbol;
+	private String symbol;
 	@JsonProperty("uri")
-	public String uri;
+	private String uri;
 	@JsonProperty("sellerFeeBasisPoints")
-	public BigDecimal sellerFeeBasisPoints;
+	private BigDecimal sellerFeeBasisPoints;
 	@JsonProperty("creators")
-	public Object creators;
+	private Object creators;
 
 }

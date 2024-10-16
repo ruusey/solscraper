@@ -18,16 +18,16 @@ import lombok.NoArgsConstructor;
 public class Instruction {
 
 	@JsonProperty("parsed")
-	public Parsed parsed;
+	private Parsed parsed;
 	@JsonProperty("program")
-	public String program;
+	private String program;
 	@JsonProperty("programId")
-	public String programId;
+	private String programId;
 	@JsonProperty("stackHeight")
-	public Integer stackHeight;
+	private Integer stackHeight;
 	@JsonProperty("accounts")
-	public List<String> accounts;
+	private List<String> accounts;
 	@JsonProperty("data")
-	public String data;
+	private String data;
 
 }

@@ -18,25 +18,25 @@ import lombok.NoArgsConstructor;
 public class Meta {
 
 	@JsonProperty("computeUnitsConsumed")
-	public Integer computeUnitsConsumed;
+	private Integer computeUnitsConsumed;
 	@JsonProperty("err")
-	public Object err;
+	private Object err;
 	@JsonProperty("fee")
-	public Integer fee;
+	private Integer fee;
 	@JsonProperty("innerInstructions")
-	public List<InnerInstruction> innerInstructions;
+	private List<InnerInstruction> innerInstructions;
 	@JsonProperty("logMessages")
-	public List<String> logMessages;
+	private List<String> logMessages;
 	@JsonProperty("postBalances")
-	public List<Long> postBalances;
+	private List<Long> postBalances;
 	@JsonProperty("postTokenBalances")
-	public List<PostTokenBalance> postTokenBalances;
+	private List<PostTokenBalance> postTokenBalances;
 	@JsonProperty("preBalances")
-	public List<Long> preBalances;
+	private List<Long> preBalances;
 	@JsonProperty("preTokenBalances")
-	public List<PreTokenBalance> preTokenBalances;
+	private List<PreTokenBalance> preTokenBalances;
 	@JsonProperty("rewards")
-	public List<Object> rewards;
+	private List<Object> rewards;
 
 
 }
