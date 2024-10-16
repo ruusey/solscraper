@@ -188,7 +188,7 @@ public class SolscraperService {
                                     final Pair pair = dexScreenerResponse.pairs.get(0);
                                     final BaseToken token = pair.getBaseToken();
 
-                                    if (new BigDecimal(pair.getFdv()).compareTo(new BigDecimal(120000)) == 1) {
+                                    if (new BigDecimal(pair.getFdv()).compareTo(new BigDecimal(240000)) == 1) {
                                         final String msg = MessageFormat.format(TOKEN_BUY_MSG,
                                                 token.getName() + " (" + token.getSymbol() + ") " + token.getAddress(), pair.getVolume(),
                                                 pair.getLiquidity(), pair.getFdv(), pair.getUrl(), "Mint Datetime: " + new Date(blockTimeFinal));
