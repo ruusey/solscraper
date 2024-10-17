@@ -164,7 +164,9 @@ public class SolscraperService {
                
                                 builder.append("<b>CA: </b>" + assetResult.getId() + "\n");
                                 builderDiscord.append("**CA: **" + assetResult.getId() + "\n");
-
+                                // TODO: Determine if this is where freeze/mint authority are 
+                                // enumerated
+                                // Not sure what authority would mean otherwise
                                 for (Authority o : assetResult.getAuthorities()) {
                                 	String scopesConcat = o.getScopes().stream().collect(Collectors.joining(", "));
                                     builder.append("<b>Authority Addr: </b> " + o.getAddress() + "\n");
