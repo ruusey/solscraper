@@ -189,13 +189,13 @@ public class SolscraperService {
 
                         final Runnable getDexScreenerData = () -> {
                             try {
-                                Thread.sleep(100000);
+                                Thread.sleep(60000);
                                 final DexScreenerResponse dexScreenerResponse = this.searchTokenPoolInformation(mintAccountFinal);
                                 if (dexScreenerResponse != null && dexScreenerResponse.getPairs() != null && dexScreenerResponse.getPairs().size() > 0) {
                                     final Pair pair = dexScreenerResponse.getPairs().get(0);
                                     final BaseToken token = pair.getBaseToken();
 
-                                    if (new BigDecimal(pair.getFdv()).compareTo(new BigDecimal(240000)) == 1) {
+                                    if (new BigDecimal(pair.getFdv()).compareTo(new BigDecimal(135000)) == 1) {
                                         final String msg = MessageFormat.format(TOKEN_BUY_MSG,
                                                 token.getName() + " (" + token.getSymbol() + ") " + token.getAddress(), pair.getVolume(),
                                                 pair.getLiquidity(), pair.getFdv(), pair.getUrl(), "Mint Datetime: " + new Date(blockTimeFinal));
