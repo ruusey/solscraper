@@ -2,6 +2,7 @@ package com.solscraper.service;
 
 import java.math.BigDecimal;
 import java.text.MessageFormat;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -28,10 +29,12 @@ import com.solscraper.model.helius.response.TokenMetadataResponse;
 import com.solscraper.model.jsonrpc.request.JsonRpcRequest;
 import com.solscraper.model.jsonrpc.request.MapParamJsonRpcRequest;
 import com.solscraper.model.nftstorage.response.TokenMetaData;
+import com.solscraper.model.solexplorer.response.AccountKey;
 import com.solscraper.model.solexplorer.response.InnerInstruction;
 import com.solscraper.model.solexplorer.response.Instruction;
 import com.solscraper.model.solexplorer.response.SolExplorerResponse;
 import com.solscraper.model.solexplorer.response.SolExplorerResult;
+import com.solscraper.model.solexplorer.response.TransactionInstruction;
 import com.solscraper.model.solexplorer.response.TransactionLookupResponse;
 import com.solscraper.util.ApiSessionOkHttp;
 import com.solscraper.util.WorkerThread;
@@ -79,10 +82,70 @@ public class SolscraperService {
         this.genericApi = new ApiSessionOkHttp("");
         Runtime.getRuntime().addShutdownHook(this.getShutdownManager());
     }
+    @EventListener(ApplicationReadyEvent.class)
+    public void dcfStart() {
+        while (!this.shutdown) {
+            try {
+                long fetchStart = Instant.now().toEpochMilli();
+                //DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E
+                //BmjJ85zsP2xHPesBKpmHYKt136gzeTtNbeVDcdfybHHT
+                final String response = this.heliusApi.executePost("", JsonRpcRequest.getSignatureRequest("DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E"));
+                final SolExplorerResponse solscan = this.heliusApi.parseResponse(response, SolExplorerResponse.class);
+                log.info("Fetched latest DCF transactions in {}ms",(Instant.now().toEpochMilli()-fetchStart));
+
+                for (final SolExplorerResult result : solscan.getResult()) {
+                    long start = Instant.now().toEpochMilli();
+
+                    if (this.seenTransactions.contains(result.getSignature()) || result.getErr() != null) {
+                        continue;
+                    } else {
+                        this.seenTransactions.add(result.getSignature());
+                    }
+
+                    // Get the transaction details using its signature
+                    final String signature = result.getSignature();
+                    final JsonRpcRequest tx = JsonRpcRequest.getTransactionRequest(signature);
+                    final String transaction = this.heliusApi.executePost("", tx);
+                    final TransactionLookupResponse transactionParsed = this.heliusApi.parseResponse(transaction,
+                            TransactionLookupResponse.class);
+                    List<AccountKey> txIns = transactionParsed.getResult().getTransaction().getMessage().getAccountKeys();
+                    for(int i = 0; i<txIns.size(); i++) {
+                        
+                        final String account = txIns.get(i).getPubkey();
+                        if(account.equals("ComputeBudget111111111111111111111111111111") || account.equals("11111111111111111111111111111111") || account.equals("Sysvar1nstructions1111111111111111111111111")) {
+                            continue;
+                        }
+                        Long preBalance = transactionParsed.getResult().getMeta().getPreBalances().get(i);
+                        Long postBalance = transactionParsed.getResult().getMeta().getPostBalances().get(i);
+                        double preBal = preBalance/(1000000000d);
+                        double postBal = postBalance/(1000000000d);
+                        Double diffBal = postBal - preBal;
+                        String balString = diffBal.toString();
+                        if(!balString.contains("E") && !balString.equals("0.0")) {
+                            log.info("Account {} balanceChange={}", account, diffBal);
+                        }
+                    }
+                    for (final InnerInstruction instruction : transactionParsed.getResult().getMeta().getInnerInstructions()) {
+                        for (final Instruction innerInstruction : instruction.getInstructions()) {
+                            if (innerInstruction == null || innerInstruction.getParsed() == null || innerInstruction.getParsed().getType() == null)
+                                continue;
+                          //log.info("Instruction: {}",innerInstruction);
+                        }
+                    }
+                    log.info("Transaction {} parsed in {}ms",signature,(Instant.now().toEpochMilli()-start));
+                    Thread.sleep(200);
+
+                }
+                Thread.sleep(2000);
+            }catch(Exception e) {
+                log.error("Failed to get DCF transactions. Reason: {}", e);
+            }
+        }
+    }
 
     // Yes this should be split into multiple methods
     // does that mean im gonna do it? No.
-    @EventListener(ApplicationReadyEvent.class)
+
     public void start() throws Exception {
         // Loop while we haven't shutdown
         while (!this.shutdown) {
@@ -143,8 +206,8 @@ public class SolscraperService {
                     if (mintAccount != null) {
                         final Runnable quickTokenData = () -> {
                             try {
-                                final TokenMetadataRequest metaDataRequest = TokenMetadataRequest.builder().mintAccounts(Arrays.asList(mintAccountFinal))
-                                        .includeOffChain(false).build();
+//                                final TokenMetadataRequest metaDataRequest = TokenMetadataRequest.builder().mintAccounts(Arrays.asList(mintAccountFinal))
+//                                        .includeOffChain(false).build();
                                 final MapParamJsonRpcRequest assetRequest = MapParamJsonRpcRequest.getHeliusAssetLookupReqest(mintAccountFinal);
                                 final String assetResponse = this.heliusApi.executePost("", assetRequest);
                                 final HeliusMetadataResponse heliusAssetInfo = this.heliusApi.parseResponse(assetResponse,
@@ -155,13 +218,10 @@ public class SolscraperService {
                                 final StringBuilder builderDiscord = new StringBuilder();
                                 builder.append("<u>LATEST MINT @" + new Date(blockTimeFinal) + "</u>\n");
                                 builderDiscord.append("__LATEST MINT @" + new Date(blockTimeFinal) + "__\n");
-
                                 builder.append(
                                         "<b>" +tokenMeta.getName() + " (" + tokenMeta.getSymbol() + ")</b>\n");
                                 builderDiscord.append(
                                         "**" + tokenMeta.getName() + " (" + tokenMeta.getSymbol() + ")**\n");
-
-               
                                 builder.append("<b>CA: </b>" + assetResult.getId() + "\n");
                                 builderDiscord.append("**CA: **" + assetResult.getId() + "\n");
                                 // TODO: Determine if this is where freeze/mint authority are 
@@ -180,7 +240,7 @@ public class SolscraperService {
                                     builderDiscord.append(imageUrl);
                                     log.info("Publishing RAW token update for {}",  tokenMeta.getName()+"("+tokenMeta.getSymbol()+")");
                                     this.postToDiscordWebhookRaw(builderDiscord.toString());
-                                    this.telegramService.sendGroupMessage(builder.toString(), imageUrl);
+                                    //this.telegramService.sendGroupMessage(builder.toString(), imageUrl);
                                 }
                             } catch (Exception e) {
                                 log.error("Failed to get quick data from Solana Explorer for quick token data, {}", e);
@@ -206,7 +266,7 @@ public class SolscraperService {
                                                 pair.getLiquidity(), pair.getFdv(), pair.getUrl(), "Mint Datetime: " + new Date(blockTimeFinal));
                                         log.info("Publishing BUY token message for {}",  msg);
                                         this.postToDiscordWebhook(msgDisc);
-                                        this.telegramService.sendSimpleMessage(msg);
+                                        //this.telegramService.sendSimpleMessage(msg);
                                     } else {
                                         final String msg = MessageFormat.format(TOKEN_MSG,
                                                 token.getName() + " (" + token.getSymbol() + ") " + token.getAddress(), pair.getVolume(),
