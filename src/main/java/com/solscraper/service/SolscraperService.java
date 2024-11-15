@@ -82,7 +82,7 @@ public class SolscraperService {
         this.genericApi = new ApiSessionOkHttp("");
         Runtime.getRuntime().addShutdownHook(this.getShutdownManager());
     }
-    @EventListener(ApplicationReadyEvent.class)
+   // @EventListener(ApplicationReadyEvent.class)
     public void dcfStart() {
         while (!this.shutdown) {
             try {
@@ -314,6 +314,14 @@ public class SolscraperService {
         final String tokenUrl = "/dex/tokens/" + pairAddress;
         final String response = this.dexScreenerApi.executeGet(tokenUrl);
         return this.dexScreenerApi.parseResponse(response, DexScreenerResponse.class);
+    }
+    
+    public TransactionLookupResponse getTransactionBySignature(String sig) throws Exception {
+        final JsonRpcRequest tx = JsonRpcRequest.getTransactionRequest(sig);
+        final String transaction = this.heliusApi.executePost("", tx);
+        final TransactionLookupResponse transactionParsed = this.heliusApi.parseResponse(transaction,
+                TransactionLookupResponse.class);
+        return transactionParsed; 
     }
 
     private DexScreenerResponse searchTokenPoolInformation(String pairAddress) throws Exception {
