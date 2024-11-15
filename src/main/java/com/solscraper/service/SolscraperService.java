@@ -82,7 +82,7 @@ public class SolscraperService {
         this.genericApi = new ApiSessionOkHttp("");
         Runtime.getRuntime().addShutdownHook(this.getShutdownManager());
     }
-    @EventListener(ApplicationReadyEvent.class)
+    //@EventListener(ApplicationReadyEvent.class)
     public void dcfStart() {
         while (!this.shutdown) {
             try {
@@ -145,7 +145,7 @@ public class SolscraperService {
 
     // Yes this should be split into multiple methods
     // does that mean im gonna do it? No.
-
+    //@EventListener(ApplicationReadyEvent.class)
     public void start() throws Exception {
         // Loop while we haven't shutdown
         while (!this.shutdown) {

@@ -1,10 +1,10 @@
 package com.solscraper.service;
 
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -14,7 +14,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +31,7 @@ import com.solscraper.model.solexplorer.response.AccountKey;
 import com.solscraper.model.solexplorer.response.TransactionLookupResponse;
 import com.solscraper.util.MapUtil;
 
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -42,9 +42,10 @@ import okio.ByteString;
 
 @Service
 @Slf4j
+@Data
 public class SolcraperWebSocket extends WebSocketListener {
-
-	private static final String[] CA_TO_MONITOR = { "CzLSujWBLFsSjncfkh59rUFqvafWcY5tzedWJSuypump" };
+	public static final String DUMP_LOC = "C:\\temp\\dump.json";
+	private static final String[] CA_TO_MONITOR = { "DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E" };
 	private static final ObjectMapper MAPPER = new ObjectMapper();
 	@Value("${service.helius.websocket}")
 	private String heliusUrl;
@@ -53,23 +54,24 @@ public class SolcraperWebSocket extends WebSocketListener {
 	private SolscraperService service;
 	private Map<String, HashMap<String, BigDecimal>> adrressAccounts = new HashMap<>();
 
-	//@EventListener(ApplicationReadyEvent.class)
+	@EventListener(ApplicationReadyEvent.class)
 	public void run() {
 		log.info("Running Helius WebSocket transaction Listener");
 		final OkHttpClient client = new OkHttpClient.Builder().readTimeout(3000, TimeUnit.MILLISECONDS).build();
 		final Request request = new Request.Builder().url(heliusUrl).build();
 		client.newWebSocket(request, this);
+		this.loadBalanceStates();
 	}
-
-	@PostConstruct
+	
 	public void loadBalanceStates() {
 		try {
 			final TypeReference<HashMap<String, HashMap<String, BigDecimal>>> typeRef = new TypeReference<HashMap<String, HashMap<String, BigDecimal>>>() {
 			};
-			final String json = Files.readString(Path.of("C:/temp/dump.json"));
+			final String json = Files.readString(Path.of(DUMP_LOC));
+
 			if(json.length()==0) {
 				this.adrressAccounts = new HashMap<>();
-				this.adrressAccounts.put("CzLSujWBLFsSjncfkh59rUFqvafWcY5tzedWJSuypump", new HashMap<>());
+				this.adrressAccounts.put("DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E", new HashMap<>());
 			}else {
 				this.adrressAccounts = MAPPER.readValue(json, typeRef);
 
@@ -195,19 +197,25 @@ public class SolcraperWebSocket extends WebSocketListener {
 	public void onFailure(WebSocket webSocket, Throwable t, Response response) {
 		t.printStackTrace();
 	}
+	
+	public Map<String, HashMap<String, BigDecimal>> getSortedMap(){
+		HashMap<String, BigDecimal> sortedAccounts = (HashMap<String, BigDecimal>) MapUtil.sortByValue(this.adrressAccounts.get(CA_TO_MONITOR[0]));
+		Map<String, HashMap<String, BigDecimal>> sortedMap = new HashMap<>();
+		sortedMap.put(CA_TO_MONITOR[0], sortedAccounts);
+		return sortedMap;
+	}
+
 
 	@PreDestroy
-	@Scheduled(fixedDelay=30000l)
+	@Scheduled(fixedDelay=5000l, initialDelay=10000l)
 	public void writeSstateToFile() {
 		try {
-			HashMap<String, BigDecimal> sortedAccounts = (HashMap<String, BigDecimal>) MapUtil.sortByValue(this.adrressAccounts.get(CA_TO_MONITOR[0]));
-			Map<String, HashMap<String, BigDecimal>> sortedMap = new HashMap<>();
-			sortedMap.put(CA_TO_MONITOR[0], sortedAccounts);
+			
 			MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
-			String json = MAPPER.writeValueAsString(sortedMap);
+			String json = MAPPER.writeValueAsString(this.getSortedMap());
 			MAPPER.disable(SerializationFeature.INDENT_OUTPUT);
-			Files.writeString(Path.of("C:/temp/dump.json"), json);
-
+			Files.writeString(Path.of(DUMP_LOC), json);
+			log.info("Wrote Profits file successfully");
 		} catch (Exception e) {
 			log.error("Failed to write balances to dump.json. Reason: {}", e);
 		}

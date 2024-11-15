@@ -19,10 +19,10 @@
 	</properties>
 	<dependencies>
 		<dependency>
-  <groupId>com.github.pengrad</groupId>
-  <artifactId>java-telegram-bot-api</artifactId>
-  <version>7.2.1</version>
-</dependency>
+			<groupId>com.github.pengrad</groupId>
+			<artifactId>java-telegram-bot-api</artifactId>
+			<version>7.2.1</version>
+		</dependency>
 		<dependency>
 			<groupId>org.jsoup</groupId>
 			<artifactId>jsoup</artifactId>
@@ -39,7 +39,7 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
-				<dependency>
+		<dependency>
 			<groupId>joda-time</groupId>
 			<artifactId>joda-time</artifactId>
 			<version>2.10.4</version>
@@ -79,7 +79,7 @@
 				</configuration>
 			</plugin>
 		</plugins>
-		
+
 	</build>
 
 </project>
