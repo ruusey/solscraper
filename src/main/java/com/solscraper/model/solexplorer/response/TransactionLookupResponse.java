@@ -1,5 +1,7 @@
 package com.solscraper.model.solexplorer.response;
 
+import java.util.Optional;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -22,5 +24,10 @@ public class TransactionLookupResponse {
 	private Result result;
 	@JsonProperty("id")
 	private String id;
+	
+	
+	public Optional<AccountKey> getTxSigner() {
+		return this.result.getTransaction().getMessage().getAccountKeys().stream().filter(key->key.signer).findAny();
+	}
 
 }
