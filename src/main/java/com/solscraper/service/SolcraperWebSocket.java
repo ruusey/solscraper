@@ -1,4 +1,4 @@
-package com.solscraper.util;
+package com.solscraper.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -23,10 +23,11 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.solscraper.model.jsonrpc.request.WebSocketParamJsonRpcRequest;
 import com.solscraper.model.solexplorer.response.AccountKey;
 import com.solscraper.model.solexplorer.response.TransactionLookupResponse;
-import com.solscraper.service.SolscraperService;
+import com.solscraper.util.MapUtil;
 
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
@@ -40,7 +41,7 @@ import okio.ByteString;
 @Slf4j
 public class SolcraperWebSocket extends WebSocketListener {
 
-	private static final String[] CA_TO_MONITOR = { "3psH1Mj1f7yUfaD5gh6Zj7epE8hhrMkMETgv5TshQA4o", "" };
+	private static final String[] CA_TO_MONITOR = { "CzLSujWBLFsSjncfkh59rUFqvafWcY5tzedWJSuypump" };
 	private static final ObjectMapper MAPPER = new ObjectMapper();
 	@Value("${service.helius.websocket}")
 	private String heliusUrl;
@@ -65,11 +66,12 @@ public class SolcraperWebSocket extends WebSocketListener {
 			final String json = Files.readString(Path.of("C:/temp/dump.json"));
 			if(json.length()==0) {
 				this.adrressAccounts = new HashMap<>();
+				this.adrressAccounts.put("CzLSujWBLFsSjncfkh59rUFqvafWcY5tzedWJSuypump", new HashMap<>());
 			}else {
 				this.adrressAccounts = MAPPER.readValue(json, typeRef);
 
 			}
-			log.info("Successfully loaded {} account balancess", this.adrressAccounts.size());
+			log.info("Successfully loaded {} account balancess", this.adrressAccounts.get(CA_TO_MONITOR[0]).size());
 		} catch (Exception e) {
 			log.error("Failed to write balances to dump.json. Reason: {}", e);
 		}
@@ -137,7 +139,7 @@ public class SolcraperWebSocket extends WebSocketListener {
 					if (!balString.contains("E") && !balString.equals("0.0")) {
 						log.info("Account {} balanceChange={}", account, diffBal);
 						final Optional<AccountKey> signer = tx.getTxSigner();
-						this.handleAddressPurchase((signer.isPresent() ? signer.get().pubkey : "UNKOWN_CA"), account,
+						this.handleAddressPurchase(CA_TO_MONITOR[0], account,
 								new BigDecimal(diffBal).setScale(4, RoundingMode.HALF_EVEN));
 					}
 				}
@@ -167,7 +169,12 @@ public class SolcraperWebSocket extends WebSocketListener {
 	@Scheduled(fixedDelay=30000l)
 	public void writeSstateToFile() {
 		try {
-			String json = MAPPER.writeValueAsString(this.adrressAccounts);
+			HashMap<String, BigDecimal> sortedAccounts = (HashMap<String, BigDecimal>) MapUtil.sortByValue(this.adrressAccounts.get(CA_TO_MONITOR[0]));
+			Map<String, HashMap<String, BigDecimal>> sortedMap = new HashMap<>();
+			sortedMap.put(CA_TO_MONITOR[0], sortedAccounts);
+			MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
+			String json = MAPPER.writeValueAsString(sortedMap);
+			MAPPER.disable(SerializationFeature.INDENT_OUTPUT);
 			Files.writeString(Path.of("C:/temp/dump.json"), json);
 
 		} catch (Exception e) {
