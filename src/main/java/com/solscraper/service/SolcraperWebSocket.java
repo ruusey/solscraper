@@ -6,9 +6,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PostConstruct;
@@ -50,7 +53,7 @@ public class SolcraperWebSocket extends WebSocketListener {
 	private SolscraperService service;
 	private Map<String, HashMap<String, BigDecimal>> adrressAccounts = new HashMap<>();
 
-	@EventListener(ApplicationReadyEvent.class)
+	//@EventListener(ApplicationReadyEvent.class)
 	public void run() {
 		log.info("Running Helius WebSocket transaction Listener");
 		final OkHttpClient client = new OkHttpClient.Builder().readTimeout(3000, TimeUnit.MILLISECONDS).build();
@@ -75,6 +78,34 @@ public class SolcraperWebSocket extends WebSocketListener {
 		} catch (Exception e) {
 			log.error("Failed to write balances to dump.json. Reason: {}", e);
 		}
+		this.printStats();
+
+	}
+	
+	private void printStats() {
+
+		BigDecimal totalBought = BigDecimal.ZERO;
+		BigDecimal totalSold = BigDecimal.ZERO;
+		
+		Set<String> sellerAddr = new HashSet<>();
+		Set<String> buyerAddr = new HashSet<>();
+
+		for(Entry<String, HashMap<String, BigDecimal>> entry: this.adrressAccounts.entrySet()) {
+			for(Entry<String, BigDecimal> e: entry.getValue().entrySet()) {
+				//Buyer
+				if(e.getValue().compareTo(BigDecimal.ZERO)==-1) {
+					buyerAddr.add(e.getKey());
+					totalBought = totalBought.add(e.getValue().abs());
+				}
+				//Seller
+				if(e.getValue().compareTo(BigDecimal.ZERO)==1) {
+					sellerAddr.add(e.getKey());
+					totalSold = totalSold.add(e.getValue());
+
+				}
+			}
+		}
+		log.info("CA {} had \n{} Unique Buyers \n {} Unique Sellers \n Total Sold (SOL): {} \n Total Bought (SOL): {}", CA_TO_MONITOR[0], buyerAddr.size(), sellerAddr.size(), totalSold, totalBought);
 	}
 
 	@Override

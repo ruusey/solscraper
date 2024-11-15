@@ -82,7 +82,7 @@ public class SolscraperService {
         this.genericApi = new ApiSessionOkHttp("");
         Runtime.getRuntime().addShutdownHook(this.getShutdownManager());
     }
-   // @EventListener(ApplicationReadyEvent.class)
+    @EventListener(ApplicationReadyEvent.class)
     public void dcfStart() {
         while (!this.shutdown) {
             try {
