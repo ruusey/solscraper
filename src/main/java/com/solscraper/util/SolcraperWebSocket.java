@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -38,8 +39,8 @@ import okio.ByteString;
 @Service
 @Slf4j
 public class SolcraperWebSocket extends WebSocketListener {
-	
-	private static final String[] CA_TO_MONITOR = {"3psH1Mj1f7yUfaD5gh6Zj7epE8hhrMkMETgv5TshQA4o",""};
+
+	private static final String[] CA_TO_MONITOR = { "3psH1Mj1f7yUfaD5gh6Zj7epE8hhrMkMETgv5TshQA4o", "" };
 	private static final ObjectMapper MAPPER = new ObjectMapper();
 	@Value("${service.helius.websocket}")
 	private String heliusUrl;
@@ -47,26 +48,29 @@ public class SolcraperWebSocket extends WebSocketListener {
 	@Autowired
 	private SolscraperService service;
 	private Map<String, HashMap<String, BigDecimal>> adrressAccounts = new HashMap<>();
+
 	@EventListener(ApplicationReadyEvent.class)
 	public void run() {
 		log.info("Running Helius WebSocket transaction Listener");
-		OkHttpClient client = new OkHttpClient.Builder().readTimeout(3000, TimeUnit.MILLISECONDS).build();
-
-		Request request = new Request.Builder().url(heliusUrl).build();
+		final OkHttpClient client = new OkHttpClient.Builder().readTimeout(3000, TimeUnit.MILLISECONDS).build();
+		final Request request = new Request.Builder().url(heliusUrl).build();
 		client.newWebSocket(request, this);
-
-
 	}
-	
+
 	@PostConstruct
-	public void loadBalanceStateas() {
+	public void loadBalanceStates() {
 		try {
-			 TypeReference<HashMap<String, HashMap<String, BigDecimal>>> typeRef 
-	            = new TypeReference<HashMap<String, HashMap<String,BigDecimal>>>() {};
-			 String json =Files.readString(Path.of("C:/temp/dump.json"));
-			 this.adrressAccounts = MAPPER.readValue(json, typeRef);
-			 log.info("Successfully loaded {} account balancess", this.adrressAccounts.size());
-		}catch(Exception e) {
+			final TypeReference<HashMap<String, HashMap<String, BigDecimal>>> typeRef = new TypeReference<HashMap<String, HashMap<String, BigDecimal>>>() {
+			};
+			final String json = Files.readString(Path.of("C:/temp/dump.json"));
+			if(json.length()==0) {
+				this.adrressAccounts = new HashMap<>();
+			}else {
+				this.adrressAccounts = MAPPER.readValue(json, typeRef);
+
+			}
+			log.info("Successfully loaded {} account balancess", this.adrressAccounts.size());
+		} catch (Exception e) {
 			log.error("Failed to write balances to dump.json. Reason: {}", e);
 		}
 	}
@@ -83,35 +87,37 @@ public class SolcraperWebSocket extends WebSocketListener {
 			}
 		}
 	}
-	
+
 	private void handleAddressPurchase(String account, String addr, BigDecimal amount) {
 		HashMap<String, BigDecimal> curr = this.adrressAccounts.get(account);
 		if(curr==null) {
-			curr = new HashMap<String, BigDecimal>();
-			this.adrressAccounts.put(account, curr);
+			curr = new HashMap<>();
 		}
-		final BigDecimal currentBal = curr.get(addr);
-		if(currentBal==null){
-			this.adrressAccounts.put(account, curr);
-		}else {
-			final BigDecimal newBal = currentBal.add(amount).setScale(4, RoundingMode.HALF_EVEN);
-			this.adrressAccounts.put(account, curr);
-			log.info("Address {} Trade volume is now {} SOL", addr, newBal);
+		BigDecimal currentBal = curr.get(addr);
+		if (currentBal == null) {
+			currentBal = amount.setScale(4, RoundingMode.HALF_EVEN);
+		} else {
+			currentBal = currentBal.add(amount).setScale(4, RoundingMode.HALF_EVEN);
+			//this.adrressAccounts.put(account, curr);
+			log.info("Address {} Trade volume is now {} SOL", addr, currentBal);
 
 		}
+		curr.put(addr, currentBal);
+		this.adrressAccounts.put(account, curr);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public void onMessage(WebSocket webSocket, String text) {
 		try {
-			//System.out.println("MESSAGE: " + text);
+			// System.out.println("MESSAGE: " + text);
 			final Map<String, Object> results = MAPPER.readValue(text, Map.class);
 			final Map<String, Object> params = (Map<String, Object>) results.get("params");
 			final Map<String, Object> res = (Map<String, Object>) params.get("result");
 			final Map<String, Object> sig = (Map<String, Object>) res.get("value");
 			if (sig.get("err") == null) {
-				final TransactionLookupResponse tx = this.service.getTransactionBySignature(sig.get("signature").toString());
+				final TransactionLookupResponse tx = this.service
+						.getTransactionBySignature(sig.get("signature").toString());
 
 				final List<AccountKey> txIns = tx.getResult().getTransaction().getMessage().getAccountKeys();
 				for (int i = 0; i < txIns.size(); i++) {
@@ -130,22 +136,20 @@ public class SolcraperWebSocket extends WebSocketListener {
 					final String balString = diffBal.toString();
 					if (!balString.contains("E") && !balString.equals("0.0")) {
 						log.info("Account {} balanceChange={}", account, diffBal);
-						Optional<AccountKey> signer = tx.getTxSigner();
-						this.handleAddressPurchase( (signer.isPresent()? signer.get().pubkey :"UNKOWN_CA"),account, new BigDecimal(diffBal).setScale(4, RoundingMode.HALF_EVEN));
+						final Optional<AccountKey> signer = tx.getTxSigner();
+						this.handleAddressPurchase((signer.isPresent() ? signer.get().pubkey : "UNKOWN_CA"), account,
+								new BigDecimal(diffBal).setScale(4, RoundingMode.HALF_EVEN));
 					}
 				}
-				//log.info("Found Transaction {}", tx);
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
 			log.error("Failed to parse Solana Transaction. Reason: {}", e.getMessage());
 		}
-
 	}
 
 	@Override
 	public void onMessage(WebSocket webSocket, ByteString bytes) {
-		//System.out.println("MESSAGE: " + bytes.hex());
+		// System.out.println("MESSAGE: " + bytes.hex());
 	}
 
 	@Override
@@ -158,14 +162,15 @@ public class SolcraperWebSocket extends WebSocketListener {
 	public void onFailure(WebSocket webSocket, Throwable t, Response response) {
 		t.printStackTrace();
 	}
-	
+
 	@PreDestroy
+	@Scheduled(fixedDelay=30000l)
 	public void writeSstateToFile() {
 		try {
 			String json = MAPPER.writeValueAsString(this.adrressAccounts);
 			Files.writeString(Path.of("C:/temp/dump.json"), json);
 
-		}catch(Exception e) {
+		} catch (Exception e) {
 			log.error("Failed to write balances to dump.json. Reason: {}", e);
 		}
 	}
