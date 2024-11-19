@@ -71,7 +71,7 @@ public class SolcraperWebSocket extends WebSocketListener {
 
 			if(json.length()==0) {
 				this.adrressAccounts = new HashMap<>();
-				this.adrressAccounts.put("DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E", new HashMap<>());
+				this.adrressAccounts.put(CA_TO_MONITOR[0], new HashMap<>());
 			}else {
 				this.adrressAccounts = MAPPER.readValue(json, typeRef);
 
@@ -112,15 +112,15 @@ public class SolcraperWebSocket extends WebSocketListener {
 
 	@Override
 	public void onOpen(WebSocket webSocket, Response response) {
-		for (String ca : this.adrressAccounts.keySet()) {
-			WebSocketParamJsonRpcRequest req = WebSocketParamJsonRpcRequest.getSubscribeAccount(ca);
+		//for (String ca : this.adrressAccounts.keySet()) {
+			WebSocketParamJsonRpcRequest req = WebSocketParamJsonRpcRequest.getSubscribeAccount(CA_TO_MONITOR[0]);
 			try {
 				String json = MAPPER.writeValueAsString(req);
 				webSocket.send(json);
 			} catch (Exception e) {
 				log.error("Failed to send WebSocket JSON. Reason: {}", e);
 			}
-		}
+		//}
 	}
 
 	private void handleAddressPurchase(String account, String addr, BigDecimal amount) {
@@ -190,7 +190,7 @@ public class SolcraperWebSocket extends WebSocketListener {
 	@Override
 	public void onClosing(WebSocket webSocket, int code, String reason) {
 		webSocket.close(1000, null);
-		System.out.println("CLOSE: " + code + " " + reason);
+		log.info("CLOSE: " + code + " " + reason);
 	}
 
 	@Override
