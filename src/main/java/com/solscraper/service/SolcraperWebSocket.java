@@ -5,6 +5,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -13,9 +15,11 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import javax.annotation.PreDestroy;
 
+import org.apache.commons.lang3.SerializationUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -45,8 +49,9 @@ import okio.ByteString;
 @Data
 public class SolcraperWebSocket extends WebSocketListener {
 	public static final String DUMP_LOC = "C:\\temp\\dump.json";
+	
 	private static final String[] CA_TO_MONITOR = { "DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E" };
-	private static final ObjectMapper MAPPER = new ObjectMapper();
+	public static final ObjectMapper MAPPER = new ObjectMapper();
 	@Value("${service.helius.websocket}")
 	private String heliusUrl;
 
@@ -95,12 +100,12 @@ public class SolcraperWebSocket extends WebSocketListener {
 		for(Entry<String, HashMap<String, BigDecimal>> entry: this.adrressAccounts.entrySet()) {
 			for(Entry<String, BigDecimal> e: entry.getValue().entrySet()) {
 				//Buyer
-				if(e.getValue().compareTo(BigDecimal.ZERO)==-1) {
+				if(e.getValue().compareTo(new BigDecimal(0.002))==-1) {
 					buyerAddr.add(e.getKey());
 					totalBought = totalBought.add(e.getValue().abs());
 				}
 				//Seller
-				if(e.getValue().compareTo(BigDecimal.ZERO)==1) {
+				if(e.getValue().compareTo(new BigDecimal(-0.002))==1) {
 					sellerAddr.add(e.getKey());
 					totalSold = totalSold.add(e.getValue());
 
@@ -134,7 +139,7 @@ public class SolcraperWebSocket extends WebSocketListener {
 		} else {
 			currentBal = currentBal.add(amount).setScale(4, RoundingMode.HALF_EVEN);
 			//this.adrressAccounts.put(account, curr);
-			log.info("Address {} Trade volume is now {} SOL", addr, currentBal);
+			log.info("Address {} Trade volume is now {} SOL", addr.substring(0,10), currentBal);
 
 		}
 		curr.put(addr, currentBal);
@@ -170,7 +175,7 @@ public class SolcraperWebSocket extends WebSocketListener {
 					final Double diffBal = postBal - preBal;
 					final String balString = diffBal.toString();
 					if (!balString.contains("E") && !balString.equals("0.0")) {
-						log.info("Account {} balanceChange={}", account, diffBal);
+						log.info("Account {} balanceChange={}", account.substring(0,10), diffBal);
 						final Optional<AccountKey> signer = tx.getTxSigner();
 						this.handleAddressPurchase(CA_TO_MONITOR[0], account,
 								new BigDecimal(diffBal).setScale(4, RoundingMode.HALF_EVEN));
@@ -199,8 +204,31 @@ public class SolcraperWebSocket extends WebSocketListener {
 	}
 	
 	public Map<String, HashMap<String, BigDecimal>> getSortedMap(){
-		HashMap<String, BigDecimal> sortedAccounts = (HashMap<String, BigDecimal>) MapUtil.sortByValue(this.adrressAccounts.get(CA_TO_MONITOR[0]));
+		//HashMap<String, BigDecimal> sortedAccounts = (HashMap<String, BigDecimal>) MapUtil.sortByValue(this.adrressAccounts.get(CA_TO_MONITOR[0]));
+		List<String> toRemove = new ArrayList<>();
 		Map<String, HashMap<String, BigDecimal>> sortedMap = new HashMap<>();
+
+		
+		  Map<String, Map<String, BigDecimal>> deepCopy = SerializationUtils.clone(new HashMap<>(this.adrressAccounts));
+		  var data = new HashMap<String, BigDecimal>();
+			var dat0 = new HashMap<String, BigDecimal>();
+		for(Entry<String, BigDecimal> e : deepCopy.get(CA_TO_MONITOR[0]).entrySet()) {
+			
+
+			if(e.getValue().compareTo(new BigDecimal(0.05d))==1) {
+				data.put(e.getKey(), e.getValue());
+				//sortedMap.put(CA_TO_MONITOR[0], data);
+			}
+			if(e.getValue().compareTo(new BigDecimal(-0.05))==-1 ) {
+				dat0.put(e.getKey(), e.getValue());
+
+			}
+
+		}
+		dat0.putAll(data);
+
+		HashMap<String, BigDecimal> sortedAccounts = (HashMap<String, BigDecimal>) MapUtil.sortByValue(dat0);
+
 		sortedMap.put(CA_TO_MONITOR[0], sortedAccounts);
 		return sortedMap;
 	}

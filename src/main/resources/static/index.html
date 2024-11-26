@@ -1,0 +1,153 @@
+<html>
+
+<head>
+	<link rel="shortcut icon" href="#">
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<title>Sol Scraper DCF</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js">
+	</script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js">
+	</script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js">
+	</script>
+	<!-- Bootstrap 4.0.0 -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+
+</head>
+<style>
+	@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
+
+	*,
+	*::before,
+	*::after {
+		box-sizing: border-box;
+		margin: 0;
+		padding: 0;
+	}
+
+	body {
+		font-family: "Roboto", sans-serif;
+		background-color: #1e1e1e;
+		color: aliceblue;
+	}
+
+	.container {
+		width: 100vw;
+		height: 100vh;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+</style>
+
+
+<body style="padding: 1em;">
+	<script type="text/javascript">
+		var BASE_URL;
+
+
+		if (location.hostname.indexOf('localhost') >= 0 ||
+			location.hostname.indexOf('127.0.0.1') >= 0)
+			BASE_URL = "http://localhost";
+		else BASE_URL = "http://crah.stats";
+
+		function initialize() {
+			jQuery.ajaxSetup({async: true});
+			$("#refresh-crash-stats").on("click", function(e){
+				fetchCrashStats()
+			});
+		}
+
+		function fetchCrashStats() {
+			$.ajax({
+				type: 'get',
+				url: BASE_URL + '/crash-stats',
+				contentType: 'application/json',
+				dataType: 'json',
+				success: function (json, status, xhr) {
+					console.log("Building crash stats table")
+					buildCrashResultsTable(json);
+				},
+				error: function (response) {
+					errorHandler(response);
+				}
+			});
+		}
+		
+		function buildCrashResultsTable(json){
+			var table = null;
+			$("#crash-stats-tbody-winners").empty();
+			$("#crash-stats-tbody-loserss").empty();
+
+			let rootObj = json["DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E"]
+			let balances = Object.entries(rootObj);
+			for (const [key, value] of balances) {
+			  console.log(`${key}: ${value}`);
+			  let num = parseFloat(`${value}`);
+
+			  let tableRow = $("<tr>");
+			  if(num<0){
+				table = $("#crash-stats-tbody-losers");
+				tableRow.css("background-color","red")
+			  }else{
+				table = $("#crash-stats-tbody-winners");
+				tableRow.css("background-color","green")
+			  }
+
+			  let address = $("<td>");
+			  let pnl = $("<td>");
+			  address.text(`${key}`);
+			  pnl.text(`${value}`);
+			  tableRow.append(address);
+			  tableRow.append(pnl);
+			  table.append(tableRow);
+			}
+		}
+		
+		function errorHandler(data) {
+			console.log("IN ERROR HANDLER > " + JSON.stringify(data));	
+		}
+		
+		$(document).ready(function(){
+			initialize();
+		})
+
+	</script>
+	<h1> Crash (DegenCoinFlip) </h1>
+	<br />
+	<button id="refresh-crash-stats">REFRESH</button>
+
+	<h3>Biggesst winnerrs and losers</h3>
+
+	<table style="float:left; margin-right:1.6em;">
+		<th>
+
+			<tr>
+				<td>ADDRESS</td>
+				<td>NET P/L</td>
+			</tr>
+		</th>
+		<tbody id="crash-stats-tbody-winners">
+
+
+		</tbody>
+	</table>
+	<table style="float:left;">
+			<th>
+
+				<tr>
+					<td>ADDRESS</td>
+					<td>NET P/L</td>
+				</tr>
+			</th>
+			<tbody id="crash-stats-tbody-losers">
+
+
+			</tbody>
+		</table>
+</body>
+
+
+</html>
