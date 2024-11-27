@@ -51,7 +51,7 @@
 		if (location.hostname.indexOf('localhost') >= 0 ||
 			location.hostname.indexOf('127.0.0.1') >= 0)
 			BASE_URL = "http://localhost";
-		else BASE_URL = "http://99.184.131.215";
+		else BASE_URL = "http://18.117.127.158";
 
 		function initialize() {
 			jQuery.ajaxSetup({async: true});
@@ -60,6 +60,7 @@
 				fetchCrashStats();
 			});
 			fetchCrashStats();
+			setTimeout(fetchCrashStats, 5000)
 		}
 
 		function fetchCrashStats() {
@@ -81,7 +82,7 @@
 		function buildCrashResultsTable(json){
 			var table = null;
 			$("#crash-stats-tbody-winners").empty();
-			$("#crash-stats-tbody-loserss").empty();
+			$("#crash-stats-tbody-losers").empty();
 
 			let rootObj = json["DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E"]
 			let balances = Object.entries(rootObj);
@@ -119,7 +120,7 @@
 	</script>
 	<h1> Crash (DegenCoinFlip) </h1>
 	<hr />
-	<button id="refresh-crash-stats">REFRESH</button>
+	<button id="refresh-crash-stats"><h4>REFRESH STATS</h4></button>
 
 	<h3>Biggest winners and losers</h3>
 
