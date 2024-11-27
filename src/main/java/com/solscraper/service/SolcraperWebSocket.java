@@ -55,6 +55,7 @@ public class SolcraperWebSocket extends WebSocketListener {
 	private SolscraperService service;
 	private Map<String, HashMap<String, BigDecimal>> adrressAccounts = new HashMap<>();
 	private WebSocket webSocket;
+	
 	@EventListener(ApplicationReadyEvent.class)
 	public void run() {
 		log.info("Running Helius WebSocket transaction Listener");
@@ -173,6 +174,7 @@ public class SolcraperWebSocket extends WebSocketListener {
 								new BigDecimal(diffBal).setScale(4, RoundingMode.HALF_EVEN));
 					}
 				}
+
 			}
 		} catch (Exception e) {
 			log.error("Failed to parse Solana Transaction. Reason: {}", e.getMessage());
