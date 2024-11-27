@@ -51,13 +51,15 @@
 		if (location.hostname.indexOf('localhost') >= 0 ||
 			location.hostname.indexOf('127.0.0.1') >= 0)
 			BASE_URL = "http://localhost";
-		else BASE_URL = "http://crah.stats";
+		else BASE_URL = "http://99.184.131.215";
 
 		function initialize() {
 			jQuery.ajaxSetup({async: true});
+		
 			$("#refresh-crash-stats").on("click", function(e){
-				fetchCrashStats()
+				fetchCrashStats();
 			});
+			fetchCrashStats();
 		}
 
 		function fetchCrashStats() {

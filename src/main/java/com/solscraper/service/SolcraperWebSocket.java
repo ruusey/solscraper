@@ -1,12 +1,10 @@
 package com.solscraper.service;
 
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -15,8 +13,6 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
 import javax.annotation.PreDestroy;
 
 import org.apache.commons.lang3.SerializationUtils;
@@ -58,20 +54,19 @@ public class SolcraperWebSocket extends WebSocketListener {
 	@Autowired
 	private SolscraperService service;
 	private Map<String, HashMap<String, BigDecimal>> adrressAccounts = new HashMap<>();
-
+	private WebSocket webSocket;
 	@EventListener(ApplicationReadyEvent.class)
 	public void run() {
 		log.info("Running Helius WebSocket transaction Listener");
 		final OkHttpClient client = new OkHttpClient.Builder().readTimeout(3000, TimeUnit.MILLISECONDS).build();
 		final Request request = new Request.Builder().url(heliusUrl).build();
-		client.newWebSocket(request, this);
+		this.webSocket = client.newWebSocket(request, this);
 		this.loadBalanceStates();
 	}
 	
 	public void loadBalanceStates() {
 		try {
-			final TypeReference<HashMap<String, HashMap<String, BigDecimal>>> typeRef = new TypeReference<HashMap<String, HashMap<String, BigDecimal>>>() {
-			};
+			final TypeReference<HashMap<String, HashMap<String, BigDecimal>>> typeRef = new TypeReference<HashMap<String, HashMap<String, BigDecimal>>>() {};
 			final String json = Files.readString(Path.of(DUMP_LOC));
 
 			if(json.length()==0) {
@@ -86,16 +81,14 @@ public class SolcraperWebSocket extends WebSocketListener {
 			log.error("Failed to write balances to dump.json. Reason: {}", e);
 		}
 		this.printStats();
-
 	}
 	
 	private void printStats() {
-
 		BigDecimal totalBought = BigDecimal.ZERO;
 		BigDecimal totalSold = BigDecimal.ZERO;
 		
-		Set<String> sellerAddr = new HashSet<>();
-		Set<String> buyerAddr = new HashSet<>();
+		final Set<String> sellerAddr = new HashSet<>();
+		final Set<String> buyerAddr = new HashSet<>();
 
 		for(Entry<String, HashMap<String, BigDecimal>> entry: this.adrressAccounts.entrySet()) {
 			for(Entry<String, BigDecimal> e: entry.getValue().entrySet()) {
@@ -108,7 +101,6 @@ public class SolcraperWebSocket extends WebSocketListener {
 				if(e.getValue().compareTo(new BigDecimal(-0.002))==1) {
 					sellerAddr.add(e.getKey());
 					totalSold = totalSold.add(e.getValue());
-
 				}
 			}
 		}
@@ -195,12 +187,25 @@ public class SolcraperWebSocket extends WebSocketListener {
 	@Override
 	public void onClosing(WebSocket webSocket, int code, String reason) {
 		webSocket.close(1000, null);
-		log.info("CLOSE: " + code + " " + reason);
+		log.info("CLOSE: {} {}",code , reason);
+		try {
+			this.webSocket.close(1000, "Remote socket disconnected");
+		}catch(Exception e) {
+			log.info("Remote websocket terminated session. Reason: {}", e);
+		}
+		this.run();
 	}
 
 	@Override
 	public void onFailure(WebSocket webSocket, Throwable t, Response response) {
-		t.printStackTrace();
+		log.info("FAILURE: {}. Reason: {} " +  response + " " + t.getMessage());
+		try {
+			this.webSocket.close(1000, "Remote socket disconnected");
+			t.printStackTrace();
+		}catch(Exception e) {
+			log.info("Remote websocket terminated session. Reason: {}", e);
+		}
+		this.run();
 	}
 	
 	public Map<String, HashMap<String, BigDecimal>> getSortedMap(){
