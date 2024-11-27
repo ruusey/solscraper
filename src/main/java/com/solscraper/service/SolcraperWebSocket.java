@@ -44,7 +44,7 @@ import okio.ByteString;
 @Slf4j
 @Data
 public class SolcraperWebSocket extends WebSocketListener {
-	public static final String DUMP_LOC = "C:\\temp\\dump.json";
+	public static final String DUMP_LOC =  SolcraperWebSocket.isWindows()?"C:\\temp\\dump.json":"/home/temp/dump.json";
 	
 	private static final String[] CA_TO_MONITOR = { "DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E" };
 	public static final ObjectMapper MAPPER = new ObjectMapper();
@@ -242,7 +242,7 @@ public class SolcraperWebSocket extends WebSocketListener {
 
 
 	@PreDestroy
-	@Scheduled(fixedDelay=5000l, initialDelay=10000l)
+	@Scheduled(fixedDelay=15000, initialDelay=10000l)
 	public void writeSstateToFile() {
 		try {
 			
@@ -251,11 +251,16 @@ public class SolcraperWebSocket extends WebSocketListener {
 			MAPPER.disable(SerializationFeature.INDENT_OUTPUT);
 			Files.writeString(Path.of(DUMP_LOC), json);
 			log.info("Wrote Profits file successfully");
+			this.printStats();
 		} catch (Exception e) {
 			log.error("Failed to write balances to dump.json. Reason: {}", e);
 		}
 	}
-
+	public static boolean isWindows() {
+		if (System.getProperty("os.name").toLowerCase().contains("windows"))return true;
+		else return false;
+	}
+	
 	public static void main(String... args) {
 		new SolcraperWebSocket().run();
 	}

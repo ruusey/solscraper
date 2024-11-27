@@ -145,7 +145,7 @@ public class SolscraperService {
 
     // Yes this should be split into multiple methods
     // does that mean im gonna do it? No.
-    //@EventListener(ApplicationReadyEvent.class)
+    @EventListener(ApplicationReadyEvent.class)
     public void start() throws Exception {
         // Loop while we haven't shutdown
         while (!this.shutdown) {
