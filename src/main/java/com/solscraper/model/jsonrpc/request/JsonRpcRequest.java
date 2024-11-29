@@ -44,6 +44,14 @@ public class JsonRpcRequest {
         return JsonRpcRequest.builder().method("getSignaturesForAddress").jsonrpc("2.0").params(Arrays.asList(addr, extraParams))
                 .id(UUID.randomUUID().toString()).build();
     }
+    
+    public static JsonRpcRequest getSignatureRequest(String addr, Integer limit) {
+        final Map<String, Object> extraParams = new HashMap<String, Object>();
+        extraParams.put("limit", limit);
+
+        return JsonRpcRequest.builder().method("getSignaturesForAddress").jsonrpc("2.0").params(Arrays.asList(addr, extraParams))
+                .id(UUID.randomUUID().toString()).build();
+    }
 
     public static JsonRpcRequest getTokenAccountRequest(String mintAddress) {
         final Map<String, Object> extraParams = new HashMap<String, Object>();

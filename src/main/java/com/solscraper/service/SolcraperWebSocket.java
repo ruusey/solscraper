@@ -44,8 +44,9 @@ import okio.ByteString;
 @Slf4j
 @Data
 public class SolcraperWebSocket extends WebSocketListener {
-	public static final String DUMP_LOC =  SolcraperWebSocket.isWindows()?"C:\\temp\\dump.json":"/home/temp/dump.json";
-	
+	public static final String DUMP_LOC = SolcraperWebSocket.isWindows() ? "C:\\temp\\dump.json"
+			: "/home/temp/dump.json";
+
 	private static final String[] CA_TO_MONITOR = { "DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E" };
 	public static final ObjectMapper MAPPER = new ObjectMapper();
 	@Value("${service.helius.websocket}")
@@ -55,7 +56,7 @@ public class SolcraperWebSocket extends WebSocketListener {
 	private SolscraperService service;
 	private Map<String, HashMap<String, BigDecimal>> adrressAccounts = new HashMap<>();
 	private WebSocket webSocket;
-	
+
 	@EventListener(ApplicationReadyEvent.class)
 	public void run() {
 		log.info("Running Helius WebSocket transaction Listener");
@@ -64,16 +65,17 @@ public class SolcraperWebSocket extends WebSocketListener {
 		this.webSocket = client.newWebSocket(request, this);
 		this.loadBalanceStates();
 	}
-	
+
 	public void loadBalanceStates() {
 		try {
-			final TypeReference<HashMap<String, HashMap<String, BigDecimal>>> typeRef = new TypeReference<HashMap<String, HashMap<String, BigDecimal>>>() {};
+			final TypeReference<HashMap<String, HashMap<String, BigDecimal>>> typeRef = new TypeReference<HashMap<String, HashMap<String, BigDecimal>>>() {
+			};
 			final String json = Files.readString(Path.of(DUMP_LOC));
 
-			if(json.length()==0) {
+			if (json.length() == 0) {
 				this.adrressAccounts = new HashMap<>();
 				this.adrressAccounts.put(CA_TO_MONITOR[0], new HashMap<>());
-			}else {
+			} else {
 				this.adrressAccounts = MAPPER.readValue(json, typeRef);
 
 			}
@@ -83,47 +85,48 @@ public class SolcraperWebSocket extends WebSocketListener {
 		}
 		this.printStats();
 	}
-	
+
 	private void printStats() {
 		BigDecimal totalBought = BigDecimal.ZERO;
 		BigDecimal totalSold = BigDecimal.ZERO;
-		
+
 		final Set<String> sellerAddr = new HashSet<>();
 		final Set<String> buyerAddr = new HashSet<>();
 
-		for(Entry<String, HashMap<String, BigDecimal>> entry: this.adrressAccounts.entrySet()) {
-			for(Entry<String, BigDecimal> e: entry.getValue().entrySet()) {
-				//Buyer
-				if(e.getValue().compareTo(new BigDecimal(0.002))==-1) {
+		for (Entry<String, HashMap<String, BigDecimal>> entry : this.adrressAccounts.entrySet()) {
+			for (Entry<String, BigDecimal> e : entry.getValue().entrySet()) {
+				// Buyer
+				if (e.getValue().compareTo(new BigDecimal(0.002)) == -1) {
 					buyerAddr.add(e.getKey());
 					totalBought = totalBought.add(e.getValue().abs());
 				}
-				//Seller
-				if(e.getValue().compareTo(new BigDecimal(-0.002))==1) {
+				// Seller
+				if (e.getValue().compareTo(new BigDecimal(-0.002)) == 1) {
 					sellerAddr.add(e.getKey());
 					totalSold = totalSold.add(e.getValue());
 				}
 			}
 		}
-		log.info("CA {} had \n{} Unique Buyers \n {} Unique Sellers \n Total Sold (SOL): {} \n Total Bought (SOL): {}", CA_TO_MONITOR[0], buyerAddr.size(), sellerAddr.size(), totalSold, totalBought);
+		log.info("CA {} had \n{} Unique Buyers \n {} Unique Sellers \n Total Sold (SOL): {} \n Total Bought (SOL): {}",
+				CA_TO_MONITOR[0], buyerAddr.size(), sellerAddr.size(), totalSold, totalBought);
 	}
 
 	@Override
 	public void onOpen(WebSocket webSocket, Response response) {
-		//for (String ca : this.adrressAccounts.keySet()) {
-			WebSocketParamJsonRpcRequest req = WebSocketParamJsonRpcRequest.getSubscribeAccount(CA_TO_MONITOR[0]);
-			try {
-				String json = MAPPER.writeValueAsString(req);
-				webSocket.send(json);
-			} catch (Exception e) {
-				log.error("Failed to send WebSocket JSON. Reason: {}", e);
-			}
-		//}
+		// for (String ca : this.adrressAccounts.keySet()) {
+		WebSocketParamJsonRpcRequest req = WebSocketParamJsonRpcRequest.getSubscribeAccount(CA_TO_MONITOR[0]);
+		try {
+			String json = MAPPER.writeValueAsString(req);
+			webSocket.send(json);
+		} catch (Exception e) {
+			log.error("Failed to send WebSocket JSON. Reason: {}", e);
+		}
+		// }
 	}
 
 	private void handleAddressPurchase(String account, String addr, BigDecimal amount) {
 		HashMap<String, BigDecimal> curr = this.adrressAccounts.get(account);
-		if(curr==null) {
+		if (curr == null) {
 			curr = new HashMap<>();
 		}
 		BigDecimal currentBal = curr.get(addr);
@@ -131,8 +134,7 @@ public class SolcraperWebSocket extends WebSocketListener {
 			currentBal = amount.setScale(4, RoundingMode.HALF_EVEN);
 		} else {
 			currentBal = currentBal.add(amount).setScale(4, RoundingMode.HALF_EVEN);
-			//this.adrressAccounts.put(account, curr);
-			log.info("Address {} Trade volume is now {} SOL", addr.substring(0,10), currentBal);
+			log.info("Address {} Trade volume is now {} SOL", addr.substring(0, 10), currentBal);
 
 		}
 		curr.put(addr, currentBal);
@@ -143,7 +145,6 @@ public class SolcraperWebSocket extends WebSocketListener {
 	@Override
 	public void onMessage(WebSocket webSocket, String text) {
 		try {
-			// System.out.println("MESSAGE: " + text);
 			final Map<String, Object> results = MAPPER.readValue(text, Map.class);
 			final Map<String, Object> params = (Map<String, Object>) results.get("params");
 			final Map<String, Object> res = (Map<String, Object>) params.get("result");
@@ -154,7 +155,6 @@ public class SolcraperWebSocket extends WebSocketListener {
 
 				final List<AccountKey> txIns = tx.getResult().getTransaction().getMessage().getAccountKeys();
 				for (int i = 0; i < txIns.size(); i++) {
-
 					final String account = txIns.get(i).getPubkey();
 					if (account.equals("ComputeBudget111111111111111111111111111111")
 							|| account.equals("11111111111111111111111111111111")
@@ -168,13 +168,12 @@ public class SolcraperWebSocket extends WebSocketListener {
 					final Double diffBal = postBal - preBal;
 					final String balString = diffBal.toString();
 					if (!balString.contains("E") && !balString.equals("0.0")) {
-						log.info("Account {} balanceChange={}", account.substring(0,10), diffBal);
-						final Optional<AccountKey> signer = tx.getTxSigner();
+						log.info("Account {} balanceChange={}", account.substring(0, 10), diffBal);
+						//final Optional<AccountKey> signer = tx.getTxSigner();
 						this.handleAddressPurchase(CA_TO_MONITOR[0], account,
 								new BigDecimal(diffBal).setScale(4, RoundingMode.HALF_EVEN));
 					}
 				}
-
 			}
 		} catch (Exception e) {
 			log.error("Failed to parse Solana Transaction. Reason: {}", e.getMessage());
@@ -182,17 +181,16 @@ public class SolcraperWebSocket extends WebSocketListener {
 	}
 
 	@Override
-	public void onMessage(WebSocket webSocket, ByteString bytes) {
-		// System.out.println("MESSAGE: " + bytes.hex());
-	}
+	//NO-OP
+	public void onMessage(WebSocket webSocket, ByteString bytes) {}
 
 	@Override
 	public void onClosing(WebSocket webSocket, int code, String reason) {
 		webSocket.close(1000, null);
-		log.info("CLOSE: {} {}",code , reason);
+		log.info("CLOSE: {} {}", code, reason);
 		try {
 			this.webSocket.close(1000, "Remote socket disconnected");
-		}catch(Exception e) {
+		} catch (Exception e) {
 			log.info("Remote websocket terminated session. Reason: {}", e);
 		}
 		this.run();
@@ -200,52 +198,42 @@ public class SolcraperWebSocket extends WebSocketListener {
 
 	@Override
 	public void onFailure(WebSocket webSocket, Throwable t, Response response) {
-		log.info("FAILURE: {}. Reason: {} " +  response + " " + t.getMessage());
+		log.info("FAILURE: {}. Reason: {} " + response + " " + t.getMessage());
 		try {
 			this.webSocket.close(1000, "Remote socket disconnected");
 			t.printStackTrace();
-		}catch(Exception e) {
+		} catch (Exception e) {
 			log.info("Remote websocket terminated session. Reason: {}", e);
 		}
 		this.run();
 	}
-	
-	public Map<String, HashMap<String, BigDecimal>> getSortedMap(){
-		//HashMap<String, BigDecimal> sortedAccounts = (HashMap<String, BigDecimal>) MapUtil.sortByValue(this.adrressAccounts.get(CA_TO_MONITOR[0]));
-		List<String> toRemove = new ArrayList<>();
-		Map<String, HashMap<String, BigDecimal>> sortedMap = new HashMap<>();
 
-		
-		  Map<String, Map<String, BigDecimal>> deepCopy = SerializationUtils.clone(new HashMap<>(this.adrressAccounts));
-		  var data = new HashMap<String, BigDecimal>();
-			var dat0 = new HashMap<String, BigDecimal>();
-		for(Entry<String, BigDecimal> e : deepCopy.get(CA_TO_MONITOR[0]).entrySet()) {
-			
+	public Map<String, HashMap<String, BigDecimal>> getSortedMap() {
+		final Map<String, HashMap<String, BigDecimal>> sortedMap = new HashMap<>();
+		final Map<String, Map<String, BigDecimal>> deepCopy = SerializationUtils
+				.clone(new HashMap<>(this.adrressAccounts));
+		final Map<String, BigDecimal> data = new HashMap<>();
+		final Map<String, BigDecimal> dat0 = new HashMap<>();
+		for (Entry<String, BigDecimal> e : deepCopy.get(CA_TO_MONITOR[0]).entrySet()) {
 
-			if(e.getValue().compareTo(new BigDecimal(0.05d))==1) {
+			if (e.getValue().compareTo(new BigDecimal(0.05d)) == 1) {
 				data.put(e.getKey(), e.getValue());
-				//sortedMap.put(CA_TO_MONITOR[0], data);
 			}
-			if(e.getValue().compareTo(new BigDecimal(-0.05))==-1 ) {
+			if (e.getValue().compareTo(new BigDecimal(-0.05)) == -1) {
 				dat0.put(e.getKey(), e.getValue());
-
 			}
-
 		}
 		dat0.putAll(data);
-
-		HashMap<String, BigDecimal> sortedAccounts = (HashMap<String, BigDecimal>) MapUtil.sortByValue(dat0);
-
+		final HashMap<String, BigDecimal> sortedAccounts = (HashMap<String, BigDecimal>) MapUtil.sortByValue(dat0);
 		sortedMap.put(CA_TO_MONITOR[0], sortedAccounts);
 		return sortedMap;
 	}
 
-
 	@PreDestroy
-	@Scheduled(fixedDelay=15000, initialDelay=10000l)
-	public void writeSstateToFile() {
+	@Scheduled(fixedDelay = 15000, initialDelay = 10000l)
+	public void writeStateToFile() {
 		try {
-			
+
 			MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
 			String json = MAPPER.writeValueAsString(this.getSortedMap());
 			MAPPER.disable(SerializationFeature.INDENT_OUTPUT);
@@ -256,11 +244,14 @@ public class SolcraperWebSocket extends WebSocketListener {
 			log.error("Failed to write balances to dump.json. Reason: {}", e);
 		}
 	}
+
 	public static boolean isWindows() {
-		if (System.getProperty("os.name").toLowerCase().contains("windows"))return true;
-		else return false;
+		if (System.getProperty("os.name").toLowerCase().contains("windows"))
+			return true;
+		else
+			return false;
 	}
-	
+
 	public static void main(String... args) {
 		new SolcraperWebSocket().run();
 	}

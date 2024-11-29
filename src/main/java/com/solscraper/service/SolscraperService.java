@@ -32,8 +32,8 @@ import com.solscraper.model.nftstorage.response.TokenMetaData;
 import com.solscraper.model.solexplorer.response.AccountKey;
 import com.solscraper.model.solexplorer.response.InnerInstruction;
 import com.solscraper.model.solexplorer.response.Instruction;
-import com.solscraper.model.solexplorer.response.SolExplorerResponse;
-import com.solscraper.model.solexplorer.response.SolExplorerResult;
+import com.solscraper.model.solexplorer.response.TransactionSignaturesResponse;
+import com.solscraper.model.solexplorer.response.TransactionSignaturesResult;
 import com.solscraper.model.solexplorer.response.TransactionInstruction;
 import com.solscraper.model.solexplorer.response.TransactionLookupResponse;
 import com.solscraper.util.ApiSessionOkHttp;
@@ -90,10 +90,10 @@ public class SolscraperService {
                 //DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E
                 //BmjJ85zsP2xHPesBKpmHYKt136gzeTtNbeVDcdfybHHT
                 final String response = this.heliusApi.executePost("", JsonRpcRequest.getSignatureRequest("DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E"));
-                final SolExplorerResponse solscan = this.heliusApi.parseResponse(response, SolExplorerResponse.class);
+                final TransactionSignaturesResponse solscan = this.heliusApi.parseResponse(response, TransactionSignaturesResponse.class);
                 log.info("Fetched latest DCF transactions in {}ms",(Instant.now().toEpochMilli()-fetchStart));
 
-                for (final SolExplorerResult result : solscan.getResult()) {
+                for (final TransactionSignaturesResult result : solscan.getResult()) {
                     long start = Instant.now().toEpochMilli();
 
                     if (this.seenTransactions.contains(result.getSignature()) || result.getErr() != null) {
@@ -155,13 +155,13 @@ public class SolscraperService {
                 final String response = this.heliusApi.executePost("", JsonRpcRequest.getSignatureRequest());
                 
                 // Note: SolExplorer just mirrors the JsonRPC structure of Helius
-                final SolExplorerResponse solscan = this.heliusApi.parseResponse(response, SolExplorerResponse.class);
+                final TransactionSignaturesResponse sigLookupResponse = this.heliusApi.parseResponse(response, TransactionSignaturesResponse.class);
                 // For each row in the transactions table
                 if (this.firstFetch) {
                     this.firstFetch = false;
-                    solscan.getResult().forEach(result -> this.seenTransactions.add(result.getSignature()));
+                    sigLookupResponse.getResult().forEach(result -> this.seenTransactions.add(result.getSignature()));
                 }
-                for (final SolExplorerResult result : solscan.getResult()) {
+                for (final TransactionSignaturesResult result : sigLookupResponse.getResult()) {
                     if (this.seenTransactions.contains(result.getSignature()) || result.getErr() != null) {
                         continue;
                     } else {
@@ -323,6 +323,41 @@ public class SolscraperService {
                 TransactionLookupResponse.class);
         return transactionParsed; 
     }
+    
+    /**
+     * Returns a list of all {@link TransactionLookupResponse} for a given *address*
+     * @param address Solana address to retrieve transactions for
+     * @return {@link List} of {@link TransactionLookupResponse} representing the entire transaction historyr
+     * of a Solana wallet addrress/program address
+     * @throws Exception
+     */
+    public List<TransactionLookupResponse> backFillAddressTransactions(String address) throws Exception {
+    	final List<TransactionLookupResponse> transactionResults = new ArrayList<>();
+    	final List<String> crashTxSignatures = this.getTransactionSignaturesAgainstAddress(address, 100000);
+    	for(String txSig : crashTxSignatures) {
+    		final TransactionLookupResponse transaction = this.getTransactionBySignature(txSig);
+    		transactionResults.add(transaction);
+    	}
+    	return transactionResults;
+    }
+    //this.backFillAddressTransactions("DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E");
+    
+    /**
+     * Return up to *limit* transaction signatures against *addresss*
+     * @param address Solana address to retrieve signatures for
+     * @param limit maximum number of transactions to fetch
+     * @return {@link List} of fetched transaction signatures.
+     * @throws Exception if you are unable to invoke solana RPC
+     */
+	public List<String> getTransactionSignaturesAgainstAddress(String address, Integer limit) throws Exception {
+		final List<String> resultSignaturess = new ArrayList<>();
+		final String response = this.heliusApi.executePost("", JsonRpcRequest.getSignatureRequest(address, limit));
+		final TransactionSignaturesResponse txSigResponse = this.heliusApi.parseResponse(response,
+				TransactionSignaturesResponse.class);
+		
+		return txSigResponse.getResult().stream().map(res->res.getSignature()).collect(Collectors.toList());
+	}
+	// this.getTransactionSignaturesAgainstAddress("DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E", 1000000);
 
     private DexScreenerResponse searchTokenPoolInformation(String pairAddress) throws Exception {
         // log.info("Looking up new Token Pair {} on DexScreener", pairAddress);

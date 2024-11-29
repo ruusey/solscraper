@@ -1,5 +1,6 @@
 package com.solscraper.model.solexplorer.response;
 
+import java.util.List;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
@@ -12,19 +13,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class SolExplorerResult {
+public class TransactionSignaturesResponse {
 
-	@JsonProperty("blockTime")
-	private Integer blockTime;
-	@JsonProperty("confirmationStatus")
-	private String confirmationStatus;
-	@JsonProperty("err")
-	private Object err;
-	@JsonProperty("memo")
-	private Object memo;
-	@JsonProperty("signature")
-	private String signature;
-	@JsonProperty("slot")
-	private Integer slot;
+	@JsonProperty("jsonrpc")
+	private String jsonrpc;
+	@JsonProperty("result")
+	private List<TransactionSignaturesResult> result;
+	@JsonProperty("id")
+	private String id;
 
 }
