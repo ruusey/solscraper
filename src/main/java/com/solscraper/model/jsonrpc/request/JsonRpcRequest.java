@@ -30,24 +30,25 @@ public class JsonRpcRequest {
     private String id;
 
     public static JsonRpcRequest getSignatureRequest() {
-        final Map<String, Object> extraParams = new HashMap<String, Object>();
-        extraParams.put("limit", 10);
-
-        return JsonRpcRequest.builder().method("getSignaturesForAddress").jsonrpc("2.0").params(Arrays.asList(RAYDIUM_TOKEN_POOL, extraParams))
-                .id(UUID.randomUUID().toString()).build();
+       return getSignatureRequest(RAYDIUM_TOKEN_POOL);
     }
 
     public static JsonRpcRequest getSignatureRequest(String addr) {
-        final Map<String, Object> extraParams = new HashMap<String, Object>();
-        extraParams.put("limit", 10);
-
-        return JsonRpcRequest.builder().method("getSignaturesForAddress").jsonrpc("2.0").params(Arrays.asList(addr, extraParams))
-                .id(UUID.randomUUID().toString()).build();
+    	return getSignatureRequest(addr, null, 10);
     }
     
     public static JsonRpcRequest getSignatureRequest(String addr, Integer limit) {
+    	return getSignatureRequest(addr, null, limit);
+    }
+    
+    public static JsonRpcRequest getSignatureRequest(String addr, String startSignature, Integer limit) {
         final Map<String, Object> extraParams = new HashMap<String, Object>();
-        extraParams.put("limit", limit);
+        if(limit!=null) {
+            extraParams.put("limit", limit);
+        }
+        if(startSignature!=null) {
+            extraParams.put("before", startSignature);
+        }
 
         return JsonRpcRequest.builder().method("getSignaturesForAddress").jsonrpc("2.0").params(Arrays.asList(addr, extraParams))
                 .id(UUID.randomUUID().toString()).build();

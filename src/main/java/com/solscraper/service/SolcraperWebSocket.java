@@ -47,7 +47,7 @@ public class SolcraperWebSocket extends WebSocketListener {
 	public static final String DUMP_LOC = SolcraperWebSocket.isWindows() ? "C:\\temp\\dump.json"
 			: "/home/temp/dump.json";
 
-	private static final String[] CA_TO_MONITOR = { "DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E" };
+	private static final String[] CA_TO_MONITOR = { "oa" };
 	public static final ObjectMapper MAPPER = new ObjectMapper();
 	@Value("${service.helius.websocket}")
 	private String heliusUrl;
@@ -216,10 +216,10 @@ public class SolcraperWebSocket extends WebSocketListener {
 		final Map<String, BigDecimal> dat0 = new HashMap<>();
 		for (Entry<String, BigDecimal> e : deepCopy.get(CA_TO_MONITOR[0]).entrySet()) {
 
-			if (e.getValue().compareTo(new BigDecimal(0.05d)) == 1) {
+			if (e.getValue().compareTo(new BigDecimal(0.005d)) == 1) {
 				data.put(e.getKey(), e.getValue());
 			}
-			if (e.getValue().compareTo(new BigDecimal(-0.05)) == -1) {
+			if (e.getValue().compareTo(new BigDecimal(-0.005)) == -1) {
 				dat0.put(e.getKey(), e.getValue());
 			}
 		}
@@ -253,6 +253,7 @@ public class SolcraperWebSocket extends WebSocketListener {
 	}
 
 	public static void main(String... args) {
-		new SolcraperWebSocket().run();
+		SolcraperWebSocket ws = new SolcraperWebSocket();
+		ws.run();
 	}
 }

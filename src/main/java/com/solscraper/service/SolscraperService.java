@@ -333,10 +333,30 @@ public class SolscraperService {
      */
     public List<TransactionLookupResponse> backFillAddressTransactions(String address) throws Exception {
     	final List<TransactionLookupResponse> transactionResults = new ArrayList<>();
-    	final List<String> crashTxSignatures = this.getTransactionSignaturesAgainstAddress(address, 100000);
+    	List<String> crashTxSignatures = this.getTransactionSignaturesAgainstAddress(address, 1000);
+		log.info("Fetched first 1000 transaction singatures against ADDR: {}", address);
     	for(String txSig : crashTxSignatures) {
     		final TransactionLookupResponse transaction = this.getTransactionBySignature(txSig);
     		transactionResults.add(transaction);
+    	}
+    	
+    	String txSigToSearchFrom = crashTxSignatures.get(crashTxSignatures.size()-1);
+    	while(true) {
+        	crashTxSignatures = this.getTransactionSignaturesAgainstAddress(address, txSigToSearchFrom, 1000);
+    		log.info("Fetched next {} transaction singatures against ADDR: {} starting at SIG: {}", crashTxSignatures.size(), address, txSigToSearchFrom);
+        	for(String txSig : crashTxSignatures) {
+        		final TransactionLookupResponse transaction = this.getTransactionBySignature(txSig);
+        		log.info("Fetched transaction info for SIG: {}", txSig);
+
+        		transactionResults.add(transaction);
+        	}
+        	if(crashTxSignatures.size()==1000) {
+        		txSigToSearchFrom = crashTxSignatures.get(crashTxSignatures.size()-1);
+        		log.info("Tranaction backfill now starting at tarting at SIG: {}", txSigToSearchFrom);
+
+        	}else{
+        		break;
+        	}
     	}
     	return transactionResults;
     }
@@ -352,6 +372,15 @@ public class SolscraperService {
 	public List<String> getTransactionSignaturesAgainstAddress(String address, Integer limit) throws Exception {
 		final List<String> resultSignaturess = new ArrayList<>();
 		final String response = this.heliusApi.executePost("", JsonRpcRequest.getSignatureRequest(address, limit));
+		final TransactionSignaturesResponse txSigResponse = this.heliusApi.parseResponse(response,
+				TransactionSignaturesResponse.class);
+		
+		return txSigResponse.getResult().stream().map(res->res.getSignature()).collect(Collectors.toList());
+	}
+	
+	public List<String> getTransactionSignaturesAgainstAddress(String address, String startSignature, Integer limit) throws Exception {
+		final List<String> resultSignaturess = new ArrayList<>();
+		final String response = this.heliusApi.executePost("", JsonRpcRequest.getSignatureRequest(address, startSignature, limit));
 		final TransactionSignaturesResponse txSigResponse = this.heliusApi.parseResponse(response,
 				TransactionSignaturesResponse.class);
 		
