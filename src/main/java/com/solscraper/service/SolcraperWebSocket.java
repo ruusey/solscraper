@@ -4,15 +4,14 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
 import javax.annotation.PreDestroy;
 
 import org.apache.commons.lang3.SerializationUtils;
@@ -46,54 +45,130 @@ import okio.ByteString;
 public class SolcraperWebSocket extends WebSocketListener {
 	public static final String DUMP_LOC = SolcraperWebSocket.isWindows() ? "C:\\temp\\dump.json"
 			: "/home/temp/dump.json";
+	public static final String DUMP_LOC_SIG = SolcraperWebSocket.isWindows() ? "C:\\temp\\dump-sig.json"
+			: "/home/temp/dump-sig.json";
 
-	private static final String[] CA_TO_MONITOR = { "oa" };
+	public static final String[] CA_TO_MONITOR = { "DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E" };
 	public static final ObjectMapper MAPPER = new ObjectMapper();
 	@Value("${service.helius.websocket}")
 	private String heliusUrl;
 
 	@Autowired
 	private SolscraperService service;
-	private Map<String, HashMap<String, BigDecimal>> adrressAccounts = new HashMap<>();
+	public static Map<String, HashMap<String, BigDecimal>> adrressAccounts = new HashMap<>();
+	public static Map<String , Set<String>> seenTransactionSignatures = new HashMap<>();
 	private WebSocket webSocket;
 
 	@EventListener(ApplicationReadyEvent.class)
 	public void run() {
 		log.info("Running Helius WebSocket transaction Listener");
+		this.loadBalanceStates();
+		this.loadSignatureStates();
+		this.backFill(CA_TO_MONITOR[0]);
+		writeStateToFile();
+    	writeSigStateToFile();
+
 		final OkHttpClient client = new OkHttpClient.Builder().readTimeout(3000, TimeUnit.MILLISECONDS).build();
 		final Request request = new Request.Builder().url(heliusUrl).build();
 		this.webSocket = client.newWebSocket(request, this);
-		this.loadBalanceStates();
+	}
+
+	public void backFill(String address) {
+		log.info("Begging transaction backfill for addrress {}", address);
+		List<TransactionLookupResponse> sigTransactions = null;
+		try {
+			sigTransactions = this.service.backFillAddressTransactions(address);
+		} catch (Exception e) {
+			log.error("Failed to backfill DCF transactions. Reason: {}", e);
+		}
+		if (sigTransactions != null) {
+			for (int i = 0; i < sigTransactions.size(); i++) {
+				final TransactionLookupResponse txResponse = sigTransactions.get(i);
+				handleTransactionLookupResponse(txResponse);
+			}
+		}
+	}
+	
+	public static void handleSignature(String address, String signature) {
+		Set<String> existingSigs = seenTransactionSignatures.get(address);
+		if(existingSigs == null) {
+			Set<String> newSignatures= new HashSet<>();
+			newSignatures.add(signature);
+			seenTransactionSignatures.put(address, newSignatures);
+		}else {
+			existingSigs.add(signature);
+			seenTransactionSignatures.put(address, existingSigs);
+		}
+	}
+
+	public static void handleTransactionLookupResponse(TransactionLookupResponse txResponse) {
+		final List<AccountKey> txIns = txResponse.getResult().getTransaction().getMessage().getAccountKeys();
+		for (int j = 0; j < txIns.size(); j++) {
+			final String account = txIns.get(j).getPubkey();
+			if (account.equals("ComputeBudget111111111111111111111111111111")
+					|| account.equals("11111111111111111111111111111111")
+					|| account.equals("Sysvar1nstructions1111111111111111111111111")) {
+				continue;
+			}
+			final Long preBalance = txResponse.getResult().getMeta().getPreBalances().get(j);
+			final Long postBalance = txResponse.getResult().getMeta().getPostBalances().get(j);
+			final double preBal = preBalance / (1000000000d);
+			final double postBal = postBalance / (1000000000d);
+			final Double diffBal = postBal - preBal;
+			final String balString = diffBal.toString();
+			if (!balString.contains("E") && !balString.equals("0.0")) {
+				log.info("Account {} balanceChange={}", account.substring(0, 10), diffBal);
+				// final Optional<AccountKey> signer = tx.getTxSigner();
+				handleAddressPurchase(CA_TO_MONITOR[0], account,
+						new BigDecimal(diffBal).setScale(8, RoundingMode.HALF_EVEN));
+			}
+		}
+	}
+	
+	public void loadSignatureStates() {
+		try {
+			final TypeReference<HashMap<String, Set<String>>> typeRef = new TypeReference<HashMap<String, Set<String>>>() {};
+			final String json = Files.readString(Path.of(DUMP_LOC_SIG));
+
+			if (json.length() == 0) {
+				seenTransactionSignatures = new HashMap<>();
+				seenTransactionSignatures.put(CA_TO_MONITOR[0], new HashSet<>());
+			} else {
+				seenTransactionSignatures = MAPPER.readValue(json, typeRef);
+			}
+			log.info("Successfully loaded {} signature", seenTransactionSignatures.get(CA_TO_MONITOR[0]).size());
+		} catch (Exception e) {
+			log.error("Failed to load signatures from dump-sig.json. Reason: {}", e);
+		}
+		printStats();
 	}
 
 	public void loadBalanceStates() {
 		try {
-			final TypeReference<HashMap<String, HashMap<String, BigDecimal>>> typeRef = new TypeReference<HashMap<String, HashMap<String, BigDecimal>>>() {
-			};
+			final TypeReference<HashMap<String, HashMap<String, BigDecimal>>> typeRef = new TypeReference<HashMap<String, HashMap<String, BigDecimal>>>() {};
 			final String json = Files.readString(Path.of(DUMP_LOC));
 
 			if (json.length() == 0) {
-				this.adrressAccounts = new HashMap<>();
-				this.adrressAccounts.put(CA_TO_MONITOR[0], new HashMap<>());
+				adrressAccounts = new HashMap<>();
+				adrressAccounts.put(CA_TO_MONITOR[0], new HashMap<>());
 			} else {
-				this.adrressAccounts = MAPPER.readValue(json, typeRef);
-
+				adrressAccounts = MAPPER.readValue(json, typeRef);
 			}
-			log.info("Successfully loaded {} account balancess", this.adrressAccounts.get(CA_TO_MONITOR[0]).size());
+			log.info("Successfully loaded {} account balancess", adrressAccounts.get(CA_TO_MONITOR[0]).size());
 		} catch (Exception e) {
 			log.error("Failed to write balances to dump.json. Reason: {}", e);
 		}
-		this.printStats();
+		printStats();
 	}
 
-	private void printStats() {
+	private static void printStats() {
 		BigDecimal totalBought = BigDecimal.ZERO;
 		BigDecimal totalSold = BigDecimal.ZERO;
 
 		final Set<String> sellerAddr = new HashSet<>();
 		final Set<String> buyerAddr = new HashSet<>();
 
-		for (Entry<String, HashMap<String, BigDecimal>> entry : this.adrressAccounts.entrySet()) {
+		for (Entry<String, HashMap<String, BigDecimal>> entry : adrressAccounts.entrySet()) {
 			for (Entry<String, BigDecimal> e : entry.getValue().entrySet()) {
 				// Buyer
 				if (e.getValue().compareTo(new BigDecimal(0.002)) == -1) {
@@ -124,21 +199,21 @@ public class SolcraperWebSocket extends WebSocketListener {
 		// }
 	}
 
-	private void handleAddressPurchase(String account, String addr, BigDecimal amount) {
-		HashMap<String, BigDecimal> curr = this.adrressAccounts.get(account);
+	public static void handleAddressPurchase(String account, String addr, BigDecimal amount) {
+		HashMap<String, BigDecimal> curr = adrressAccounts.get(account);
 		if (curr == null) {
 			curr = new HashMap<>();
 		}
 		BigDecimal currentBal = curr.get(addr);
 		if (currentBal == null) {
-			currentBal = amount.setScale(4, RoundingMode.HALF_EVEN);
+			currentBal = amount.setScale(8, RoundingMode.HALF_EVEN);
 		} else {
-			currentBal = currentBal.add(amount).setScale(4, RoundingMode.HALF_EVEN);
+			currentBal = currentBal.add(amount).setScale(8, RoundingMode.HALF_EVEN);
 			log.info("Address {} Trade volume is now {} SOL", addr.substring(0, 10), currentBal);
 
 		}
 		curr.put(addr, currentBal);
-		this.adrressAccounts.put(account, curr);
+		adrressAccounts.put(account, curr);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -152,28 +227,8 @@ public class SolcraperWebSocket extends WebSocketListener {
 			if (sig.get("err") == null) {
 				final TransactionLookupResponse tx = this.service
 						.getTransactionBySignature(sig.get("signature").toString());
-
-				final List<AccountKey> txIns = tx.getResult().getTransaction().getMessage().getAccountKeys();
-				for (int i = 0; i < txIns.size(); i++) {
-					final String account = txIns.get(i).getPubkey();
-					if (account.equals("ComputeBudget111111111111111111111111111111")
-							|| account.equals("11111111111111111111111111111111")
-							|| account.equals("Sysvar1nstructions1111111111111111111111111")) {
-						continue;
-					}
-					final Long preBalance = tx.getResult().getMeta().getPreBalances().get(i);
-					final Long postBalance = tx.getResult().getMeta().getPostBalances().get(i);
-					final double preBal = preBalance / (1000000000d);
-					final double postBal = postBalance / (1000000000d);
-					final Double diffBal = postBal - preBal;
-					final String balString = diffBal.toString();
-					if (!balString.contains("E") && !balString.equals("0.0")) {
-						log.info("Account {} balanceChange={}", account.substring(0, 10), diffBal);
-						//final Optional<AccountKey> signer = tx.getTxSigner();
-						this.handleAddressPurchase(CA_TO_MONITOR[0], account,
-								new BigDecimal(diffBal).setScale(4, RoundingMode.HALF_EVEN));
-					}
-				}
+				handleTransactionLookupResponse(tx);
+				
 			}
 		} catch (Exception e) {
 			log.error("Failed to parse Solana Transaction. Reason: {}", e.getMessage());
@@ -181,8 +236,9 @@ public class SolcraperWebSocket extends WebSocketListener {
 	}
 
 	@Override
-	//NO-OP
-	public void onMessage(WebSocket webSocket, ByteString bytes) {}
+	// NO-OP
+	public void onMessage(WebSocket webSocket, ByteString bytes) {
+	}
 
 	@Override
 	public void onClosing(WebSocket webSocket, int code, String reason) {
@@ -208,10 +264,10 @@ public class SolcraperWebSocket extends WebSocketListener {
 		this.run();
 	}
 
-	public Map<String, HashMap<String, BigDecimal>> getSortedMap() {
+	public static Map<String, HashMap<String, BigDecimal>> getSortedMap() {
 		final Map<String, HashMap<String, BigDecimal>> sortedMap = new HashMap<>();
 		final Map<String, Map<String, BigDecimal>> deepCopy = SerializationUtils
-				.clone(new HashMap<>(this.adrressAccounts));
+				.clone(new HashMap<>(adrressAccounts));
 		final Map<String, BigDecimal> data = new HashMap<>();
 		final Map<String, BigDecimal> dat0 = new HashMap<>();
 		for (Entry<String, BigDecimal> e : deepCopy.get(CA_TO_MONITOR[0]).entrySet()) {
@@ -231,17 +287,33 @@ public class SolcraperWebSocket extends WebSocketListener {
 
 	@PreDestroy
 	@Scheduled(fixedDelay = 15000, initialDelay = 10000l)
-	public void writeStateToFile() {
+	public static void writeStateToFile() {
 		try {
 
 			MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
-			String json = MAPPER.writeValueAsString(this.getSortedMap());
+			String json = MAPPER.writeValueAsString(getSortedMap());
 			MAPPER.disable(SerializationFeature.INDENT_OUTPUT);
 			Files.writeString(Path.of(DUMP_LOC), json);
 			log.info("Wrote Profits file successfully");
-			this.printStats();
+			printStats();
 		} catch (Exception e) {
 			log.error("Failed to write balances to dump.json. Reason: {}", e);
+		}
+	}
+	
+	@PreDestroy
+	@Scheduled(fixedDelay = 15000, initialDelay = 10000l)
+	public static void writeSigStateToFile() {
+		try {
+
+			MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
+			String json = MAPPER.writeValueAsString(seenTransactionSignatures);
+			MAPPER.disable(SerializationFeature.INDENT_OUTPUT);
+			Files.writeString(Path.of(DUMP_LOC_SIG), json);
+			log.info("Wrote Signatures file successfully");
+			printStats();
+		} catch (Exception e) {
+			log.error("Failed to Signatures to dump-sig.json. Reason: {}", e);
 		}
 	}
 

@@ -152,7 +152,7 @@ public class SolscraperService {
             try {
                 // Execute a POST to Helius to get the latest transactions against the
                 // Raydium Token Program Contract
-                final String response = this.heliusApi.executePost("", JsonRpcRequest.getSignatureRequest());
+                final String response = this.heliusApi.executePost("", JsonRpcRequest.getRaydiumSignaturesRequest());
                 
                 // Note: SolExplorer just mirrors the JsonRPC structure of Helius
                 final TransactionSignaturesResponse sigLookupResponse = this.heliusApi.parseResponse(response, TransactionSignaturesResponse.class);
@@ -323,7 +323,7 @@ public class SolscraperService {
                 TransactionLookupResponse.class);
         return transactionParsed; 
     }
-    
+   
     /**
      * Returns a list of all {@link TransactionLookupResponse} for a given *address*
      * @param address Solana address to retrieve transactions for
@@ -338,25 +338,41 @@ public class SolscraperService {
     	for(String txSig : crashTxSignatures) {
     		final TransactionLookupResponse transaction = this.getTransactionBySignature(txSig);
     		transactionResults.add(transaction);
+    		SolcraperWebSocket.handleTransactionLookupResponse(transaction);
+    		SolcraperWebSocket.handleSignature(SolcraperWebSocket.CA_TO_MONITOR[0], txSig);
+    		log.info("Adding base TX to results. Waiting 15ms");
+    		Thread.sleep(15);
     	}
-    	
+    	SolcraperWebSocket.writeStateToFile();
+    	SolcraperWebSocket.writeSigStateToFile();
     	String txSigToSearchFrom = crashTxSignatures.get(crashTxSignatures.size()-1);
+    	log.info("Beginning transaction bacfill from SIG {}", txSigToSearchFrom );
     	while(true) {
         	crashTxSignatures = this.getTransactionSignaturesAgainstAddress(address, txSigToSearchFrom, 1000);
     		log.info("Fetched next {} transaction singatures against ADDR: {} starting at SIG: {}", crashTxSignatures.size(), address, txSigToSearchFrom);
         	for(String txSig : crashTxSignatures) {
         		final TransactionLookupResponse transaction = this.getTransactionBySignature(txSig);
-        		log.info("Fetched transaction info for SIG: {}", txSig);
+        		SolcraperWebSocket.handleTransactionLookupResponse(transaction);
+        		SolcraperWebSocket.handleSignature(SolcraperWebSocket.CA_TO_MONITOR[0], txSig);
 
+        		log.info("Fetched transaction info for SIG: {}", txSig);
         		transactionResults.add(transaction);
+        		Thread.sleep(15);
+        		log.info("Addiing base TX to results. Waiting 15ms");
+
         	}
+        	SolcraperWebSocket.writeStateToFile();
+        	SolcraperWebSocket.writeSigStateToFile();
         	if(crashTxSignatures.size()==1000) {
         		txSigToSearchFrom = crashTxSignatures.get(crashTxSignatures.size()-1);
         		log.info("Tranaction backfill now starting at tarting at SIG: {}", txSigToSearchFrom);
 
         	}else{
+        		log.info("Tranaction backfill complete. Found {} signatures for address {}",transactionResults.size(), address);
         		break;
         	}
+        	log.info("Waiting 1000ms...");
+        	Thread.sleep(1000);
     	}
     	return transactionResults;
     }

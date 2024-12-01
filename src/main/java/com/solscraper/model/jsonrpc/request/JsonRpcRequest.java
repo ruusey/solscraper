@@ -29,7 +29,7 @@ public class JsonRpcRequest {
     @JsonProperty("id")
     private String id;
 
-    public static JsonRpcRequest getSignatureRequest() {
+    public static JsonRpcRequest getRaydiumSignaturesRequest() {
        return getSignatureRequest(RAYDIUM_TOKEN_POOL);
     }
 
