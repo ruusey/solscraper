@@ -4,12 +4,15 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PreDestroy;
@@ -55,8 +58,8 @@ public class SolcraperWebSocket extends WebSocketListener {
 
 	@Autowired
 	private SolscraperService service;
-	public static Map<String, HashMap<String, BigDecimal>> adrressAccounts = new HashMap<>();
-	public static Map<String , Set<String>> seenTransactionSignatures = new HashMap<>();
+	public static Map<String, ConcurrentHashMap<String, BigDecimal>> adrressAccounts = new ConcurrentHashMap<>();
+	public static Map<String , ConcurrentLinkedDeque<String>> seenTransactionSignatures = new ConcurrentHashMap<>();
 	private WebSocket webSocket;
 
 	@EventListener(ApplicationReadyEvent.class)
@@ -64,9 +67,14 @@ public class SolcraperWebSocket extends WebSocketListener {
 		log.info("Running Helius WebSocket transaction Listener");
 		this.loadBalanceStates();
 		this.loadSignatureStates();
-		this.backFill(CA_TO_MONITOR[0]);
+    	
 		writeStateToFile();
     	writeSigStateToFile();
+    	
+    	this.backFillUntil(CA_TO_MONITOR[0]);
+    	this.backFillFrom(CA_TO_MONITOR[0]);
+    	
+		writeStateToFile();
 
 		final OkHttpClient client = new OkHttpClient.Builder().readTimeout(3000, TimeUnit.MILLISECONDS).build();
 		final Request request = new Request.Builder().url(heliusUrl).build();
@@ -74,29 +82,89 @@ public class SolcraperWebSocket extends WebSocketListener {
 	}
 
 	public void backFill(String address) {
-		log.info("Begging transaction backfill for addrress {}", address);
-		List<TransactionLookupResponse> sigTransactions = null;
+		log.info("Beginning transaction backfill for addrress {}", address);
+		List<String> sigTransactions = null;
 		try {
 			sigTransactions = this.service.backFillAddressTransactions(address);
 		} catch (Exception e) {
 			log.error("Failed to backfill DCF transactions. Reason: {}", e);
 		}
+		
 		if (sigTransactions != null) {
+			log.info("Fetching transaction data for {} signatures", sigTransactions.size());
 			for (int i = 0; i < sigTransactions.size(); i++) {
-				final TransactionLookupResponse txResponse = sigTransactions.get(i);
-				handleTransactionLookupResponse(txResponse);
+				try {
+					TransactionLookupResponse txResponse = this.service.getTransactionBySignature(sigTransactions.get(i));
+					handleTransactionLookupResponse(txResponse);
+				} catch (Exception e) {
+					log.error("Failed to lookup backfiilled transaction. Reason: {}", e);
+				}
 			}
 		}
 	}
 	
-	public static void handleSignature(String address, String signature) {
-		Set<String> existingSigs = seenTransactionSignatures.get(address);
+	public void backFillFrom(String address) {
+		final String lastTransactionSig = seenTransactionSignatures.get(address).peekFirst();
+		if(lastTransactionSig==null) {
+			log.error("No last transaction signature available beginnning backfill from latest signature");
+			this.backFill(address);
+			return;
+		}
+		log.info("Beginning transaction backfill from signature {} for addrres {}", lastTransactionSig, address );
+		try {
+			final List<String> transactionSignatures = this.service.backFillAddressTransactionsFrom(address, lastTransactionSig, 200000);
+			log.info("Successfully backfilled {} transactions. Fetching transaction data", transactionSignatures.size());
+			for (int i = 0; i < transactionSignatures.size(); i++) {
+				try {
+					TransactionLookupResponse txResponse = this.service.getTransactionBySignature(transactionSignatures.get(i));
+					handleTransactionLookupResponse(txResponse);
+				} catch (Exception e) {
+					log.error("Failed to lookup backfiilled transaction. Reason: {}", e);
+				}
+			}
+		} catch (Exception e) {
+			log.error("Failed to backfill DCF transactions. Reason: {}", e);
+		}
+	}
+	
+	public void backFillUntil(String address) {
+		final String lastTransactionSig = seenTransactionSignatures.get(address).peekLast();
+		if(lastTransactionSig==null) {
+			log.error("No last transaction signature available beginnning backfill from latest signature");
+
+			this.backFill(address);
+			return;
+		}
+		log.info("Beginning transaction backfill until signature {} for addrres {}", lastTransactionSig, address);
+		//List<TransactionLookupResponse> sigTransactions = null;
+		try {
+			List<String> transactionSignatures = this.service.backFillAddressTransactionsUntil(address, lastTransactionSig);
+			log.info("Successfully backfilled {} transactions. Fetching transaction data", transactionSignatures.size());
+			for (int i = 0; i < transactionSignatures.size(); i++) {
+				try {
+					TransactionLookupResponse txResponse = this.service.getTransactionBySignature(transactionSignatures.get(i));
+					handleTransactionLookupResponse(txResponse);
+				} catch (Exception e) {
+					log.error("Failed to lookup backfiilled transaction. Reason: {}", e);
+				}
+			}
+		} catch (Exception e) {
+			log.error("Failed to backfill DCF transactions. Reason: {}", e);
+		}
+	}
+	
+	public static void handleSignature(String address, String signature, boolean appendStart) {
+		ConcurrentLinkedDeque<String> existingSigs = seenTransactionSignatures.get(address);
 		if(existingSigs == null) {
-			Set<String> newSignatures= new HashSet<>();
+			ConcurrentLinkedDeque<String> newSignatures= new ConcurrentLinkedDeque<>();
 			newSignatures.add(signature);
 			seenTransactionSignatures.put(address, newSignatures);
 		}else {
-			existingSigs.add(signature);
+			if(appendStart) {
+				existingSigs.addFirst(signature);
+			}else {
+				existingSigs.addLast(signature);
+			}
 			seenTransactionSignatures.put(address, existingSigs);
 		}
 	}
@@ -127,12 +195,12 @@ public class SolcraperWebSocket extends WebSocketListener {
 	
 	public void loadSignatureStates() {
 		try {
-			final TypeReference<HashMap<String, Set<String>>> typeRef = new TypeReference<HashMap<String, Set<String>>>() {};
+			final TypeReference<HashMap<String, ConcurrentLinkedDeque<String>>> typeRef = new TypeReference<HashMap<String, ConcurrentLinkedDeque<String>>>() {};
 			final String json = Files.readString(Path.of(DUMP_LOC_SIG));
 
 			if (json.length() == 0) {
 				seenTransactionSignatures = new HashMap<>();
-				seenTransactionSignatures.put(CA_TO_MONITOR[0], new HashSet<>());
+				seenTransactionSignatures.put(CA_TO_MONITOR[0], new ConcurrentLinkedDeque<>());
 			} else {
 				seenTransactionSignatures = MAPPER.readValue(json, typeRef);
 			}
@@ -145,12 +213,12 @@ public class SolcraperWebSocket extends WebSocketListener {
 
 	public void loadBalanceStates() {
 		try {
-			final TypeReference<HashMap<String, HashMap<String, BigDecimal>>> typeRef = new TypeReference<HashMap<String, HashMap<String, BigDecimal>>>() {};
+			final TypeReference<HashMap<String, ConcurrentHashMap<String, BigDecimal>>> typeRef = new TypeReference<HashMap<String, ConcurrentHashMap<String, BigDecimal>>>() {};
 			final String json = Files.readString(Path.of(DUMP_LOC));
 
 			if (json.length() == 0) {
 				adrressAccounts = new HashMap<>();
-				adrressAccounts.put(CA_TO_MONITOR[0], new HashMap<>());
+				adrressAccounts.put(CA_TO_MONITOR[0], new ConcurrentHashMap<>());
 			} else {
 				adrressAccounts = MAPPER.readValue(json, typeRef);
 			}
@@ -168,7 +236,7 @@ public class SolcraperWebSocket extends WebSocketListener {
 		final Set<String> sellerAddr = new HashSet<>();
 		final Set<String> buyerAddr = new HashSet<>();
 
-		for (Entry<String, HashMap<String, BigDecimal>> entry : adrressAccounts.entrySet()) {
+		for (Entry<String, ConcurrentHashMap<String, BigDecimal>> entry : adrressAccounts.entrySet()) {
 			for (Entry<String, BigDecimal> e : entry.getValue().entrySet()) {
 				// Buyer
 				if (e.getValue().compareTo(new BigDecimal(0.002)) == -1) {
@@ -200,9 +268,9 @@ public class SolcraperWebSocket extends WebSocketListener {
 	}
 
 	public static void handleAddressPurchase(String account, String addr, BigDecimal amount) {
-		HashMap<String, BigDecimal> curr = adrressAccounts.get(account);
+		ConcurrentHashMap<String, BigDecimal> curr = adrressAccounts.get(account);
 		if (curr == null) {
-			curr = new HashMap<>();
+			curr = new ConcurrentHashMap<>();
 		}
 		BigDecimal currentBal = curr.get(addr);
 		if (currentBal == null) {

@@ -34,20 +34,28 @@ public class JsonRpcRequest {
     }
 
     public static JsonRpcRequest getSignatureRequest(String addr) {
-    	return getSignatureRequest(addr, null, 10);
+    	return getSignatureRequest(addr, null, null, 10);
     }
     
     public static JsonRpcRequest getSignatureRequest(String addr, Integer limit) {
-    	return getSignatureRequest(addr, null, limit);
+    	return getSignatureRequest(addr, null, null, limit);
     }
     
-    public static JsonRpcRequest getSignatureRequest(String addr, String startSignature, Integer limit) {
+    public static JsonRpcRequest getSignatureRequest(String addr, String untilSignature, Integer limit) {
+    	return getSignatureRequest(addr, null, untilSignature, limit);
+    }
+    
+    public static JsonRpcRequest getSignatureRequest(String addr, String startSignature, String untilSignature, Integer limit) {
         final Map<String, Object> extraParams = new HashMap<String, Object>();
         if(limit!=null) {
             extraParams.put("limit", limit);
         }
         if(startSignature!=null) {
             extraParams.put("before", startSignature);
+        }
+        
+        if(startSignature!=null) {
+            extraParams.put("until", untilSignature);
         }
 
         return JsonRpcRequest.builder().method("getSignaturesForAddress").jsonrpc("2.0").params(Arrays.asList(addr, extraParams))
