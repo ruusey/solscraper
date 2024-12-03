@@ -1,5 +1,6 @@
 package com.solscraper.service;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.MessageFormat;
 import java.time.Instant;
@@ -28,6 +29,7 @@ import com.solscraper.model.helius.meta.response.Metadata;
 import com.solscraper.model.helius.meta.response.Result;
 import com.solscraper.model.helius.request.TokenMetadataRequest;
 import com.solscraper.model.helius.response.TokenMetadataResponse;
+import com.solscraper.model.helius.response.tx.AddressTxLookupResponse;
 import com.solscraper.model.jsonrpc.request.JsonRpcRequest;
 import com.solscraper.model.jsonrpc.request.MapParamJsonRpcRequest;
 import com.solscraper.model.nftstorage.response.TokenMetaData;
@@ -56,6 +58,8 @@ public class SolscraperService {
     private transient ApiSessionOkHttp dexScreenerApi;
     private transient ApiSessionOkHttp discordApi;
     private transient ApiSessionOkHttp heliusApi;
+    private transient ApiSessionOkHttp heliusLegacyApi;
+
     private transient ApiSessionOkHttp genericApi;
 
     private final transient TelegramBotService telegramService;
@@ -69,7 +73,11 @@ public class SolscraperService {
     private String tokenDiscordWebhook;
     @Value("${service.helius}")
     private String heliusUrl;
-
+    @Value("${service.helius.api}")
+    private String heliusApiUrl;
+    @Value("${service.helius.api.key}")
+    private String heliusApiKey;
+    
     public SolscraperService(@Autowired final TelegramBotService telegramService) {
         this.telegramService = telegramService;
         this.shutdown = false;
@@ -82,6 +90,7 @@ public class SolscraperService {
         this.discordApi = new ApiSessionOkHttp("https://discordapp.com");
         this.heliusApi = new ApiSessionOkHttp(this.heliusUrl);
         this.genericApi = new ApiSessionOkHttp("");
+        this.heliusLegacyApi = new ApiSessionOkHttp(this.heliusApiUrl);
         Runtime.getRuntime().addShutdownHook(this.getShutdownManager());
     }
     //@EventListener(ApplicationReadyEvent.class)
@@ -144,10 +153,16 @@ public class SolscraperService {
             }
         }
     }
+    
+    public List<AddressTxLookupResponse> getTransactions(String address, String fromSig, String toSig) throws Exception {
+    	String response = this.heliusLegacyApi.executeGet("/v0/addresses/"+address+"/transactions?api-key="+this.heliusApiKey);
+    	AddressTxLookupResponse[] txResponse = this.heliusLegacyApi.parseResponse(response, AddressTxLookupResponse[].class);
+    	return Arrays.asList(txResponse);
+    }
 
     // Yes this should be split into multiple methods
     // does that mean im gonna do it? No.
-    @EventListener(ApplicationReadyEvent.class)
+    //@EventListener(ApplicationReadyEvent.class)
     public void start() throws Exception {
         // Loop while we haven't shutdown
         while (!this.shutdown) {
@@ -352,8 +367,8 @@ public class SolscraperService {
         		log.info("Tranaction backfill complete. Found {} signatures for address {}", crashTxSignatures.size(), address);
         		break;
         	}
-        	log.info("Waiting 1000ms...");
-        	Thread.sleep(1000);
+        	log.info("Waiting 15ms...");
+        	Thread.sleep(15);
     	}
     	log.info("(Increment) Fetched {} frontfilled transaction signatures", crashTxSignatures.size());
     	Collections.reverse(orderedSigs);
@@ -388,7 +403,7 @@ public class SolscraperService {
         	}
     		return crashTxSignatures;
     	}
-    	String txSigToSearchFrom = crashTxSignatures.get(0);
+    	String txSigToSearchFrom = crashTxSignatures.get(crashTxSignatures.size()-1);
     	while(true) {
         	crashTxSignatures = this.getTransactionSignaturesAgainstAddress(address, txSigToSearchFrom, null, 1000);
     		log.info("Fetched next {} transaction singatures against ADDR: {} starting at SIG: {}", crashTxSignatures.size(), address, txSigToSearchFrom);
@@ -406,8 +421,8 @@ public class SolscraperService {
         	if(orderedSigs.size()>=limit) {
         		break;
         	}
-        	log.info("Waiting 1000ms...");
-        	Thread.sleep(500);
+        	log.info("Waiting 15ms...");
+        	Thread.sleep(15);
         	log.info("(Increment) Fetched {} backfilled transaction signatures", crashTxSignatures.size());
         	SolcraperWebSocket.writeSigStateToFile();
     	}
@@ -440,14 +455,14 @@ public class SolscraperService {
         	if(crashTxSignatures.size()==1000) {
         		txSigToSearchFrom = crashTxSignatures.get(crashTxSignatures.size()-1);
         		log.info("Tranaction backfill now starting at tarting at SIG: {}", txSigToSearchFrom);
-
         	}else{
         		log.info("Tranaction backfill complete. Found {} signatures for address {}",transactionResults.size(), address);
         		break;
         	}
-        	log.info("Waiting 1000ms...");
-        	Thread.sleep(1000);
+        	log.info("Waiting 10ms...");
+        	Thread.sleep(15);
     	}
+    	log.info("transaction bacfill size {}", orderedSigs.size());
     	return orderedSigs;
     }
     //this.backFillAddressTransactions("DEALERKFspSo5RoXNnKAhRPhTcvJeqeEgAgZsNSjCx5E");

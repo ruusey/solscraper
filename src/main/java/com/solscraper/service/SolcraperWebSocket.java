@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -28,6 +28,8 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.solscraper.model.helius.response.tx.AddressTxLookupResponse;
+import com.solscraper.model.helius.response.tx.Instruction;
 import com.solscraper.model.jsonrpc.request.WebSocketParamJsonRpcRequest;
 import com.solscraper.model.solexplorer.response.AccountKey;
 import com.solscraper.model.solexplorer.response.TransactionLookupResponse;
@@ -67,10 +69,19 @@ public class SolcraperWebSocket extends WebSocketListener {
 		log.info("Running Helius WebSocket transaction Listener");
 		this.loadBalanceStates();
 		this.loadSignatureStates();
-    	
-		writeStateToFile();
-    	writeSigStateToFile();
-    	
+		try {
+			long start = Instant.now().toEpochMilli();
+	    	final List<AddressTxLookupResponse> responseList = this.service.getTransactions(CA_TO_MONITOR[0], null, null);
+	    	log.info("Fetched {} parsed transactions for addr {} in {}ms", responseList.size(), CA_TO_MONITOR[0], (Instant.now().toEpochMilli()-start));
+	    	for(AddressTxLookupResponse response : responseList) {
+		    	for(Instruction instruction : response.instructions) {
+		    		log.info("Parsed instruction for tx {} is {}", response.signature, instruction);
+		    	}
+	    	}
+
+		}catch(Exception e) {
+			log.error("Failed to fetch parsed transactions from helius. Reason: {}", e);
+		}
     	this.backFillUntil(CA_TO_MONITOR[0]);
     	this.backFillFrom(CA_TO_MONITOR[0]);
     	
@@ -118,6 +129,7 @@ public class SolcraperWebSocket extends WebSocketListener {
 				try {
 					TransactionLookupResponse txResponse = this.service.getTransactionBySignature(transactionSignatures.get(i));
 					handleTransactionLookupResponse(txResponse);
+					Thread.sleep(20);
 				} catch (Exception e) {
 					log.error("Failed to lookup backfiilled transaction. Reason: {}", e);
 				}
@@ -144,6 +156,7 @@ public class SolcraperWebSocket extends WebSocketListener {
 				try {
 					TransactionLookupResponse txResponse = this.service.getTransactionBySignature(transactionSignatures.get(i));
 					handleTransactionLookupResponse(txResponse);
+					Thread.sleep(20);
 				} catch (Exception e) {
 					log.error("Failed to lookup backfiilled transaction. Reason: {}", e);
 				}
