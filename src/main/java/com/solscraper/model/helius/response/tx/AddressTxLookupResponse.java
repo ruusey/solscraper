@@ -2,15 +2,20 @@
 package com.solscraper.model.helius.response.tx;
 
 import java.util.List;
-import javax.annotation.Generated;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({ "description", "type", "source", "fee", "feePayer", "signature", "slot", "timestamp",
-		"nativeTransfers", "tokenTransfers", "accountData", "transactionError", "instructions", "events" })
-@Generated("jsonschema2pojo")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AddressTxLookupResponse {
 
 	@JsonProperty("description")

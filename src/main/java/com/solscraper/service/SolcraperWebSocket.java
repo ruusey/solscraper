@@ -1,10 +1,13 @@
 package com.solscraper.service;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -26,13 +29,18 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.solscraper.model.helius.response.tx.AddressTxLookupResponse;
+import com.solscraper.model.helius.response.tx.InnerInstruction;
 import com.solscraper.model.helius.response.tx.Instruction;
+import com.solscraper.model.helius.response.tx.TokenTransfer;
 import com.solscraper.model.jsonrpc.request.WebSocketParamJsonRpcRequest;
 import com.solscraper.model.solexplorer.response.AccountKey;
 import com.solscraper.model.solexplorer.response.TransactionLookupResponse;
+import com.solscraper.util.Base58;
+import com.solscraper.util.BoshDecoder;
 import com.solscraper.util.MapUtil;
 
 import lombok.Data;
@@ -75,7 +83,28 @@ public class SolcraperWebSocket extends WebSocketListener {
 	    	log.info("Fetched {} parsed transactions for addr {} in {}ms", responseList.size(), CA_TO_MONITOR[0], (Instant.now().toEpochMilli()-start));
 	    	for(AddressTxLookupResponse response : responseList) {
 		    	for(Instruction instruction : response.instructions) {
-		    		log.info("Parsed instruction for tx {} is {}", response.signature, instruction);
+		    		if(instruction.getInnerInstructions()!=null) { 
+		    			log.info("Found dealer interaction instructions in tx {}", response.getSignature());
+		    			for(InnerInstruction inner : instruction.getInnerInstructions()) {
+		    				log.info("instruction data: {}", inner.getData());
+				    		log.info("Instruction {}",inner);
+				    		try {
+				    			//byte[] data1 = Base64.getDecoder().decode(inner.getData());
+				    			byte[] data0 = Base58.decode(inner.getData());
+					    		DataInputStream in = new DataInputStream(new ByteArrayInputStream(data0));
+					    		int index = in.readByte();
+					    		long val = in.readLong();
+					    		log.info("TX : {} : {}", index, val);
+				    		}catch(Exception e) {
+				    			log.error(e.getMessage());
+				    		}
+		    			}
+		    			
+			    		//List<InnerInstruction> inner = instruction.innerInstructions;
+		    		}
+		    		
+		    		
+
 		    	}
 	    	}
 

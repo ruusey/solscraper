@@ -155,7 +155,7 @@ public class SolscraperService {
     }
     
     public List<AddressTxLookupResponse> getTransactions(String address, String fromSig, String toSig) throws Exception {
-    	String response = this.heliusLegacyApi.executeGet("/v0/addresses/"+address+"/transactions?api-key="+this.heliusApiKey);
+    	String response = this.heliusLegacyApi.executeGet("/v0/addresses/"+address+"/transactions?limit=50&type=TRANSFER&api-key="+this.heliusApiKey);
     	AddressTxLookupResponse[] txResponse = this.heliusLegacyApi.parseResponse(response, AddressTxLookupResponse[].class);
     	return Arrays.asList(txResponse);
     }

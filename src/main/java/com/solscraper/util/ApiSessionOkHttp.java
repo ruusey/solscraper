@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Data
@@ -23,7 +24,8 @@ public class ApiSessionOkHttp implements ApiSession {
     private String accessToken;
 
     public ApiSessionOkHttp(String baseUrl) {
-        this.client = new OkHttpClient();
+        this.client = new OkHttpClient().newBuilder().readTimeout(60, TimeUnit.SECONDS).build();
+        
         this.baseUrl = baseUrl;
         mapper = new ObjectMapper();
         log.info("Created API session to " + this.baseUrl);
@@ -32,22 +34,9 @@ public class ApiSessionOkHttp implements ApiSession {
     public String executeGet(String endpoint) throws IOException {
 
         Request request = new Request.Builder().url(this.baseUrl + endpoint).get()
-				.addHeader("Authority", "explorer-api.mainnet-beta.solana.com")
-        		.addHeader("Accept", "*/*")
-        		.addHeader("Accept-Language", "en-US,en;q=0.9")
+				
         		.addHeader("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
-        		.addHeader("Sec-Ch-Ua-Mobile", "?0")
-        		.addHeader("Sec-Ch-Ua-Platform", "\"Linux\"")
-        		.addHeader("Sec-Fetch-Dest", "empty")
-        		.addHeader("Sec-Fetch-Mode", "cors")
-        		.addHeader("Sec-Fetch-Site", "same-site")
-        		//.addHeader("Sol-Au", "Tq7=s2S-Q-r0N=B9dls02fKHyE1HyYa6aT5ezmIrm")
-        		.addHeader("Sec-Ch-Ua", "\"Chromium\";v=\"122\", \"Not(A:Brand\";v=\"24\", \"Google Chrome\";v=\"122\"")
-        		.addHeader("Solana-Client", "js/0.0.0-development")
-        		.addHeader("Content-Type", "application/json")
-        		.addHeader("Dnt", "1")
-        		.addHeader("Origin", "https://explorer.solana.com")
-        		.addHeader("Referrer", "https://explorer.solana.com/")
+        
                 .build();
         try (Response response = this.client.newCall(request).execute()) {
             if (response.isSuccessful()) {
